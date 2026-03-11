@@ -150,10 +150,18 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="text-3xl font-bold text-blue-600">LinkeGym</div>
-          </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition">
+            <img 
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663402727665/W9B2DZe626mJSzUHcntkhr/linkegym-logo_5dc03736.png"
+              alt="LinkeGym Logo"
+              className="h-12 w-auto"
+            />
+            <div className="hidden sm:block">
+              <p className="text-xs text-gray-600 leading-tight">Conectando você à</p>
+              <p className="text-xs text-gray-600 leading-tight">saúde e performance.</p>
+            </div>
+          </Link>
           <div className="hidden md:flex gap-8">
             <Link href="/" className="text-gray-700 hover:text-blue-600 font-medium">Home</Link>
             <Link href="/about" className="text-gray-700 hover:text-blue-600 font-medium">Sobre</Link>

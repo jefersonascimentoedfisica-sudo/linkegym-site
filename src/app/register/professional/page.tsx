@@ -129,8 +129,18 @@ export default function ProfessionalRegister() {
     <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
       <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <Link href="/" className="text-3xl font-bold text-blue-600">LinkeGym</Link>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition">
+            <img 
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663402727665/W9B2DZe626mJSzUHcntkhr/linkegym-logo_5dc03736.png"
+              alt="LinkeGym Logo"
+              className="h-12 w-auto"
+            />
+            <div className="hidden sm:block">
+              <p className="text-xs text-gray-600 leading-tight">Conectando você à</p>
+              <p className="text-xs text-gray-600 leading-tight">saúde e performance.</p>
+            </div>
+          </Link>
           <Link href="/" className="text-blue-600 hover:text-blue-700 font-medium">
             ← Voltar
           </Link>
