@@ -1,0 +1,13 @@
+import { betterAuth } from 'better-auth'
+import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { db } from './db'
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, { provider: 'pg' }),
+  emailAndPassword: { enabled: true },
+  session: { cookieCache: { enabled: true } },
+  trustedOrigins: [
+    process.env.BETTER_AUTH_URL || 'https://linkegymbrasil.com.br',
+    process.env.NEXT_PUBLIC_APP_URL || 'https://linkegymbrasil.com.br',
+  ],
+})

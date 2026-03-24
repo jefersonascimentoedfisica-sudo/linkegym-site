@@ -1,25 +1,24 @@
-import { supabase } from './supabase-client';
+import { db } from './db'
+import * as schema from './schema'
+import { eq, desc } from 'drizzle-orm'
 
 export interface Payment {
-  id: string;
-  booking_id: string;
-  professional_id: string;
-  student_email: string;
-  amount: number;
-  currency: string;
-  status: 'pending' | 'paid' | 'completed' | 'cancelled';
-  payment_method: string;
-  stripe_payment_intent_id?: string;
-  stripe_charge_id?: string;
-  mercado_pago_payment_id?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
+  id: string
+  booking_id: string
+  professional_id: string
+  student_email: string
+  amount: number
+  currency: string
+  status: 'pending' | 'paid' | 'completed' | 'cancelled'
+  payment_method: string
+  stripe_payment_intent_id?: string
+  stripe_charge_id?: string
+  mercado_pago_payment_id?: string
+  notes?: string
+  created_at: string
+  updated_at: string
 }
 
-/**
- * Create a new payment record
- */
 export async function createPayment(
   bookingId: string,
   professionalId: string,
@@ -28,33 +27,25 @@ export async function createPayment(
   paymentMethod: string = 'stripe'
 ): Promise<Payment | null> {
   try {
-    const { data, error } = await supabase
-      .from('payments')
-      .insert([
-        {
-          booking_id: bookingId,
-          professional_id: professionalId,
-          student_email: studentEmail,
-          amount,
-          currency: 'BRL',
-          payment_method: paymentMethod,
-          status: 'pending',
-        },
-      ])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const inserted = await db
+      .insert(schema.payments)
+      .values({
+        bookingId,
+        professionalId,
+        studentEmail,
+        amount: String(amount),
+        currency: 'BRL',
+        paymentMethod,
+        status: 'pending',
+      })
+      .returning()
+    return inserted?.[0] ? mapPayment(inserted[0]) : null
   } catch (err) {
-    console.error('Error creating payment:', err);
-    return null;
+    console.error('Error creating payment:', err)
+    return null
   }
 }
 
-/**
- * Update payment status
- */
 export async function updatePaymentStatus(
   paymentId: string,
   status: 'pending' | 'paid' | 'completed' | 'cancelled',
@@ -62,133 +53,120 @@ export async function updatePaymentStatus(
   stripeChargeId?: string
 ): Promise<Payment | null> {
   try {
-    const updateData: any = {
+    const updateData: Partial<typeof schema.payments.$inferInsert> = {
       status,
-      updated_at: new Date().toISOString(),
-    };
+      updatedAt: new Date(),
+    }
 
     if (stripePaymentIntentId) {
-      updateData.stripe_payment_intent_id = stripePaymentIntentId;
+      updateData.stripePaymentIntentId = stripePaymentIntentId
     }
 
     if (stripeChargeId) {
-      updateData.stripe_charge_id = stripeChargeId;
+      updateData.stripeChargeId = stripeChargeId
     }
 
-    const { data, error } = await supabase
-      .from('payments')
-      .update(updateData)
-      .eq('id', paymentId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const updated = await db
+      .update(schema.payments)
+      .set(updateData)
+      .where(eq(schema.payments.id, paymentId))
+      .returning()
+    return updated?.[0] ? mapPayment(updated[0]) : null
   } catch (err) {
-    console.error('Error updating payment status:', err);
-    return null;
+    console.error('Error updating payment status:', err)
+    return null
   }
 }
 
-/**
- * Get payment by booking ID
- */
 export async function getPaymentByBookingId(bookingId: string): Promise<Payment | null> {
   try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('booking_id', bookingId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows found
-    return data || null;
+    const rows = await db
+      .select()
+      .from(schema.payments)
+      .where(eq(schema.payments.bookingId, bookingId))
+      .limit(1)
+    return rows?.[0] ? mapPayment(rows[0]) : null
   } catch (err) {
-    console.error('Error fetching payment:', err);
-    return null;
+    console.error('Error fetching payment:', err)
+    return null
   }
 }
 
-/**
- * Get payments by professional ID
- */
 export async function getPaymentsByProfessionalId(professionalId: string): Promise<Payment[]> {
   try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('professional_id', professionalId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const rows = await db
+      .select()
+      .from(schema.payments)
+      .where(eq(schema.payments.professionalId, professionalId))
+      .orderBy(desc(schema.payments.createdAt))
+    return (rows || []).map(mapPayment)
   } catch (err) {
-    console.error('Error fetching payments:', err);
-    return [];
+    console.error('Error fetching payments:', err)
+    return []
   }
 }
 
-/**
- * Get professional lesson price
- */
 export async function getProfessionalLessonPrice(professionalId: string): Promise<number> {
   try {
-    const { data, error } = await supabase
-      .from('professionals')
-      .select('lesson_price')
-      .eq('id', professionalId)
-      .single();
-
-    if (error) throw error;
-    return data?.lesson_price || 100.00;
+    const rows = await db
+      .select({ lessonPrice: schema.professionals.lessonPrice })
+      .from(schema.professionals)
+      .where(eq(schema.professionals.id, professionalId))
+      .limit(1)
+    return Number(rows?.[0]?.lessonPrice) || 100.0
   } catch (err) {
-    console.error('Error fetching lesson price:', err);
-    return 100.00;
+    console.error('Error fetching lesson price:', err)
+    return 100.0
   }
 }
 
-/**
- * Update professional lesson price
- */
 export async function updateProfessionalLessonPrice(
   professionalId: string,
   price: number
 ): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('professionals')
-      .update({ lesson_price: price })
-      .eq('id', professionalId);
-
-    if (error) throw error;
-    return true;
+    await db
+      .update(schema.professionals)
+      .set({ lessonPrice: String(price) })
+      .where(eq(schema.professionals.id, professionalId))
+    return true
   } catch (err) {
-    console.error('Error updating lesson price:', err);
-    return false;
+    console.error('Error updating lesson price:', err)
+    return false
   }
 }
 
-/**
- * Format currency for display
- */
+function mapPayment(row: typeof schema.payments.$inferSelect): Payment {
+  return {
+    id: row.id,
+    booking_id: row.bookingId || '',
+    professional_id: row.professionalId || '',
+    student_email: row.studentEmail || '',
+    amount: Number(row.amount) || 0,
+    currency: row.currency || 'BRL',
+    status: (row.status as Payment['status']) || 'pending',
+    payment_method: row.paymentMethod || 'stripe',
+    stripe_payment_intent_id: row.stripePaymentIntentId || undefined,
+    stripe_charge_id: row.stripeChargeId || undefined,
+    mercado_pago_payment_id: row.mercadoPagoPaymentId || undefined,
+    notes: row.notes || undefined,
+    created_at: row.createdAt?.toISOString() || new Date().toISOString(),
+    updated_at: row.updatedAt?.toISOString() || new Date().toISOString(),
+  }
+}
+
 export function formatCurrency(amount: number, currency: string = 'BRL'): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency,
-  }).format(amount);
+  }).format(amount)
 }
 
-/**
- * Calculate platform fee (10% default)
- */
 export function calculatePlatformFee(amount: number, feePercentage: number = 10): number {
-  return (amount * feePercentage) / 100;
+  return (amount * feePercentage) / 100
 }
 
-/**
- * Calculate professional earnings (after platform fee)
- */
 export function calculateProfessionalEarnings(amount: number, feePercentage: number = 10): number {
-  const fee = calculatePlatformFee(amount, feePercentage);
-  return amount - fee;
+  const fee = calculatePlatformFee(amount, feePercentage)
+  return amount - fee
 }

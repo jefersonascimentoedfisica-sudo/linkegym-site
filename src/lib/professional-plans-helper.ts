@@ -1,4 +1,6 @@
-import { supabase } from './supabase-client'
+import { db } from './db'
+import * as schema from './schema'
+import { eq } from 'drizzle-orm'
 
 export type PlanType = 'basic' | 'ouro' | 'plus'
 
@@ -24,14 +26,14 @@ export const PLAN_FEATURES = {
       'Até 2 regiões',
       'Visibilidade padrão',
       'Sem badge verificado',
-      'Até 10 leads/mês'
+      'Até 10 leads/mês',
     ],
     color: 'gray',
-    badge: '🆓 Básico'
+    badge: 'Básico',
   },
   ouro: {
     name: 'Plano Ouro',
-    price: 99.90,
+    price: 99.9,
     description: 'Para crescer seu negócio',
     features: [
       'Perfil destacado',
@@ -40,29 +42,29 @@ export const PLAN_FEATURES = {
       'Melhor posicionamento',
       'Redes sociais integradas',
       'Leads ilimitados',
-      'Estatísticas básicas'
+      'Estatísticas básicas',
     ],
     color: 'yellow',
-    badge: '⭐ Ouro'
+    badge: 'Ouro',
   },
   plus: {
     name: 'Plano Plus',
-    price: 199.90,
+    price: 199.9,
     description: 'Máximo destaque e recursos',
     features: [
       'Destaque máximo',
       'Fotos ilimitadas',
       'Todas as regiões',
       'Prioridade na busca',
-      'Badge verificado ✓',
+      'Badge verificado',
       'Leads ilimitados',
       'Estatísticas completas',
       'Suporte prioritário',
-      'Análise de conversão'
+      'Análise de conversão',
     ],
     color: 'purple',
-    badge: '👑 Plus'
-  }
+    badge: 'Plus',
+  },
 }
 
 export const getPlanLabel = (planType: PlanType): string => {
@@ -73,7 +75,7 @@ export const getPlanColor = (planType: PlanType): string => {
   const colors: Record<PlanType, string> = {
     basic: 'bg-gray-100 text-gray-800',
     ouro: 'bg-yellow-100 text-yellow-800',
-    plus: 'bg-purple-100 text-purple-800'
+    plus: 'bg-purple-100 text-purple-800',
   }
   return colors[planType]
 }
@@ -82,26 +84,24 @@ export const getPlanBorderColor = (planType: PlanType): string => {
   const colors: Record<PlanType, string> = {
     basic: 'border-gray-300',
     ouro: 'border-yellow-400',
-    plus: 'border-purple-400'
+    plus: 'border-purple-400',
   }
   return colors[planType]
 }
 
-export async function getProfessionalPlan(professionalId: string): Promise<{ success: boolean; data?: ProfessionalPlan; error?: string }> {
+export async function getProfessionalPlan(
+  professionalId: string
+): Promise<{ success: boolean; data?: ProfessionalPlan; error?: string }> {
   try {
-    const { data, error } = await supabase
-      .from('professional_plans')
-      .select('*')
-      .eq('professional_id', professionalId)
-      .eq('is_active', true)
-      .single()
+    const rows = await db
+      .select()
+      .from(schema.professionalPlans)
+      .where(eq(schema.professionalPlans.professionalId, professionalId))
+      .limit(1)
 
-    if (error && error.code !== 'PGRST116') {
-      throw error
-    }
+    const row = rows?.find((r) => r.isActive) || rows?.[0]
 
-    // If no active plan, return basic
-    if (!data) {
+    if (!row) {
       return {
         success: true,
         data: {
@@ -111,14 +111,27 @@ export async function getProfessionalPlan(professionalId: string): Promise<{ suc
           is_active: true,
           started_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
+          updated_at: new Date().toISOString(),
+        },
       }
     }
 
-    return { success: true, data }
-  } catch (err: any) {
-    return { success: false, error: err.message }
+    return {
+      success: true,
+      data: {
+        id: row.id,
+        professional_id: row.professionalId,
+        plan_type: (row.planType as PlanType) || 'basic',
+        is_active: row.isActive ?? true,
+        started_at: row.startedAt?.toISOString() || new Date().toISOString(),
+        expires_at: row.expiresAt?.toISOString() || undefined,
+        created_at: row.createdAt?.toISOString() || new Date().toISOString(),
+        updated_at: row.updatedAt?.toISOString() || new Date().toISOString(),
+      },
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { success: false, error: message }
   }
 }
 
@@ -128,32 +141,41 @@ export async function createProfessionalPlan(
   expiresAt?: string
 ): Promise<{ success: boolean; data?: ProfessionalPlan; error?: string }> {
   try {
-    // Deactivate any existing plans
-    await supabase
-      .from('professional_plans')
-      .update({ is_active: false })
-      .eq('professional_id', professionalId)
+    await db
+      .update(schema.professionalPlans)
+      .set({ isActive: false })
+      .where(eq(schema.professionalPlans.professionalId, professionalId))
 
-    // Create new plan
-    const { data, error } = await supabase
-      .from('professional_plans')
-      .insert({
-        professional_id: professionalId,
-        plan_type: planType,
-        is_active: true,
-        started_at: new Date().toISOString(),
-        expires_at: expiresAt,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+    const inserted = await db
+      .insert(schema.professionalPlans)
+      .values({
+        professionalId,
+        planType,
+        isActive: true,
+        startedAt: new Date(),
+        expiresAt: expiresAt ? new Date(expiresAt) : undefined,
       })
-      .select()
-      .single()
+      .returning()
 
-    if (error) throw error
+    const row = inserted?.[0]
+    if (!row) return { success: false, error: 'Failed to create plan' }
 
-    return { success: true, data }
-  } catch (err: any) {
-    return { success: false, error: err.message }
+    return {
+      success: true,
+      data: {
+        id: row.id,
+        professional_id: row.professionalId,
+        plan_type: (row.planType as PlanType) || planType,
+        is_active: row.isActive ?? true,
+        started_at: row.startedAt?.toISOString() || new Date().toISOString(),
+        expires_at: row.expiresAt?.toISOString() || undefined,
+        created_at: row.createdAt?.toISOString() || new Date().toISOString(),
+        updated_at: row.updatedAt?.toISOString() || new Date().toISOString(),
+      },
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { success: false, error: message }
   }
 }
 
@@ -164,18 +186,18 @@ export async function upgradePlan(
   return createProfessionalPlan(professionalId, newPlanType)
 }
 
-export async function cancelPlan(professionalId: string): Promise<{ success: boolean; error?: string }> {
+export async function cancelPlan(
+  professionalId: string
+): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase
-      .from('professional_plans')
-      .update({ is_active: false })
-      .eq('professional_id', professionalId)
-
-    if (error) throw error
-
+    await db
+      .update(schema.professionalPlans)
+      .set({ isActive: false })
+      .where(eq(schema.professionalPlans.professionalId, professionalId))
     return { success: true }
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { success: false, error: message }
   }
 }
 
@@ -188,7 +210,7 @@ export function getMaxPhotos(planType: PlanType): number {
   const maxPhotos: Record<PlanType, number> = {
     basic: 3,
     ouro: 10,
-    plus: Infinity
+    plus: Infinity,
   }
   return maxPhotos[planType]
 }
@@ -197,7 +219,7 @@ export function getMaxRegions(planType: PlanType): number {
   const maxRegions: Record<PlanType, number> = {
     basic: 2,
     ouro: 5,
-    plus: Infinity
+    plus: Infinity,
   }
   return maxRegions[planType]
 }
@@ -206,7 +228,7 @@ export function getMaxLeadsPerMonth(planType: PlanType): number {
   const maxLeads: Record<PlanType, number> = {
     basic: 10,
     ouro: Infinity,
-    plus: Infinity
+    plus: Infinity,
   }
   return maxLeads[planType]
 }

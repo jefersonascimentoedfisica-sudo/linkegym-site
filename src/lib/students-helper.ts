@@ -1,382 +1,318 @@
-import { supabase } from './supabase-client';
+import { db } from './db'
+import * as schema from './schema'
+import { eq, and, desc } from 'drizzle-orm'
 
 export interface Student {
-  id: string;
-  email: string;
-  name: string;
-  phone?: string;
-  date_of_birth?: string;
-  city?: string;
-  neighborhood?: string;
-  bio?: string;
-  profile_image_url?: string;
-  created_at: string;
-  updated_at: string;
+  id: string
+  email: string
+  name: string
+  phone?: string
+  date_of_birth?: string
+  city?: string
+  neighborhood?: string
+  bio?: string
+  profile_image_url?: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Favorite {
-  id: string;
-  student_id: string;
-  professional_id: string;
-  created_at: string;
+  id: string
+  student_id: string
+  professional_id: string
+  created_at: string
 }
 
-/**
- * Get or create student by email
- */
 export async function getOrCreateStudent(email: string, name: string): Promise<Student | null> {
   try {
-    // Try to get existing student
-    const { data: existing } = await supabase
-      .from('students')
-      .select('*')
-      .eq('email', email)
-      .single();
-
-    if (existing) return existing;
-
-    // Create new student
-    const { data, error } = await supabase
-      .from('students')
-      .insert([
-        {
-          email,
-          name,
-        },
-      ])
+    const existing = await db
       .select()
-      .single();
+      .from(schema.students)
+      .where(eq(schema.students.email, email))
+      .limit(1)
 
-    if (error) throw error;
-    return data;
+    if (existing?.[0]) return mapStudent(existing[0])
+
+    const inserted = await db
+      .insert(schema.students)
+      .values({ email, name })
+      .returning()
+
+    return inserted?.[0] ? mapStudent(inserted[0]) : null
   } catch (err) {
-    console.error('Error getting/creating student:', err);
-    return null;
+    console.error('Error getting/creating student:', err)
+    return null
   }
 }
 
-/**
- * Get student by email
- */
 export async function getStudentByEmail(email: string): Promise<Student | null> {
   try {
-    const { data, error } = await supabase
-      .from('students')
-      .select('*')
-      .eq('email', email)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return data || null;
+    const rows = await db
+      .select()
+      .from(schema.students)
+      .where(eq(schema.students.email, email))
+      .limit(1)
+    return rows?.[0] ? mapStudent(rows[0]) : null
   } catch (err) {
-    console.error('Error fetching student:', err);
-    return null;
+    console.error('Error fetching student:', err)
+    return null
   }
 }
 
-/**
- * Update student profile
- */
 export async function updateStudentProfile(
   studentId: string,
   updates: Partial<Student>
 ): Promise<Student | null> {
   try {
-    const { data, error } = await supabase
-      .from('students')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
+    const updated = await db
+      .update(schema.students)
+      .set({
+        name: updates.name,
+        phone: updates.phone,
+        dateOfBirth: updates.date_of_birth,
+        city: updates.city,
+        neighborhood: updates.neighborhood,
+        bio: updates.bio,
+        profileImageUrl: updates.profile_image_url,
+        updatedAt: new Date(),
       })
-      .eq('id', studentId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+      .where(eq(schema.students.id, studentId))
+      .returning()
+    return updated?.[0] ? mapStudent(updated[0]) : null
   } catch (err) {
-    console.error('Error updating student profile:', err);
-    return null;
+    console.error('Error updating student profile:', err)
+    return null
   }
 }
 
-/**
- * Add favorite professional
- */
 export async function addFavorite(
   studentId: string,
   professionalId: string
 ): Promise<Favorite | null> {
   try {
-    const { data, error } = await supabase
-      .from('favorites')
-      .insert([
-        {
-          student_id: studentId,
-          professional_id: professionalId,
-        },
-      ])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const inserted = await db
+      .insert(schema.favorites)
+      .values({ studentId, professionalId })
+      .returning()
+    const row = inserted?.[0]
+    if (!row) return null
+    return {
+      id: row.id,
+      student_id: row.studentId || '',
+      professional_id: row.professionalId || '',
+      created_at: row.createdAt?.toISOString() || new Date().toISOString(),
+    }
   } catch (err) {
-    console.error('Error adding favorite:', err);
-    return null;
+    console.error('Error adding favorite:', err)
+    return null
   }
 }
 
-/**
- * Remove favorite professional
- */
 export async function removeFavorite(
   studentId: string,
   professionalId: string
 ): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('favorites')
-      .delete()
-      .eq('student_id', studentId)
-      .eq('professional_id', professionalId);
-
-    if (error) throw error;
-    return true;
+    await db
+      .delete(schema.favorites)
+      .where(
+        and(
+          eq(schema.favorites.studentId, studentId),
+          eq(schema.favorites.professionalId, professionalId)
+        )
+      )
+    return true
   } catch (err) {
-    console.error('Error removing favorite:', err);
-    return false;
+    console.error('Error removing favorite:', err)
+    return false
   }
 }
 
-/**
- * Check if professional is favorite
- */
-export async function isFavorite(
-  studentId: string,
-  professionalId: string
-): Promise<boolean> {
+export async function isFavorite(studentId: string, professionalId: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase
-      .from('favorites')
-      .select('id')
-      .eq('student_id', studentId)
-      .eq('professional_id', professionalId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return !!data;
+    const rows = await db
+      .select({ id: schema.favorites.id })
+      .from(schema.favorites)
+      .where(
+        and(
+          eq(schema.favorites.studentId, studentId),
+          eq(schema.favorites.professionalId, professionalId)
+        )
+      )
+      .limit(1)
+    return !!rows?.[0]
   } catch (err) {
-    console.error('Error checking favorite:', err);
-    return false;
+    console.error('Error checking favorite:', err)
+    return false
   }
 }
 
-/**
- * Get student favorites
- */
-export async function getStudentFavorites(studentId: string): Promise<any[]> {
+export async function getStudentFavorites(studentId: string): Promise<unknown[]> {
   try {
-    const { data, error } = await supabase
-      .from('favorites')
-      .select('professional_id, professionals(*)')
-      .eq('student_id', studentId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const rows = await db
+      .select()
+      .from(schema.favorites)
+      .where(eq(schema.favorites.studentId, studentId))
+      .orderBy(desc(schema.favorites.createdAt))
+    return rows || []
   } catch (err) {
-    console.error('Error fetching favorites:', err);
-    return [];
+    console.error('Error fetching favorites:', err)
+    return []
   }
 }
 
-/**
- * Get student bookings with professional info
- */
-export async function getStudentBookings(studentId: string): Promise<any[]> {
+export async function getStudentBookings(studentId: string): Promise<unknown[]> {
   try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*, professionals(*)')
-      .eq('student_id', studentId)
-      .order('booking_date', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const rows = await db
+      .select()
+      .from(schema.bookings)
+      .where(eq(schema.bookings.studentId, studentId))
+      .orderBy(desc(schema.bookings.bookingDate))
+    return rows || []
   } catch (err) {
-    console.error('Error fetching bookings:', err);
-    return [];
+    console.error('Error fetching bookings:', err)
+    return []
   }
 }
 
-/**
- * Get student consultations with professional info
- */
-export async function getStudentConsultations(studentId: string): Promise<any[]> {
+export async function getStudentConsultations(studentId: string): Promise<unknown[]> {
   try {
-    const { data, error } = await supabase
-      .from('consultations')
-      .select('*, professionals(*)')
-      .eq('student_id', studentId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const rows = await db
+      .select()
+      .from(schema.consultations)
+      .where(eq(schema.consultations.studentId, studentId))
+      .orderBy(desc(schema.consultations.createdAt))
+    return rows || []
   } catch (err) {
-    console.error('Error fetching consultations:', err);
-    return [];
+    console.error('Error fetching consultations:', err)
+    return []
   }
 }
 
-/**
- * Get student payments
- */
-export async function getStudentPayments(studentId: string): Promise<any[]> {
+export async function getStudentPayments(studentId: string): Promise<unknown[]> {
   try {
-    // Get payments by student email
-    const student = await supabase
-      .from('students')
-      .select('email')
-      .eq('id', studentId)
-      .single();
+    const studentRows = await db
+      .select({ email: schema.students.email })
+      .from(schema.students)
+      .where(eq(schema.students.id, studentId))
+      .limit(1)
 
-    if (!student.data) return [];
+    if (!studentRows?.[0]) return []
 
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('student_email', student.data.email)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const rows = await db
+      .select()
+      .from(schema.payments)
+      .where(eq(schema.payments.studentEmail, studentRows[0].email))
+      .orderBy(desc(schema.payments.createdAt))
+    return rows || []
   } catch (err) {
-    console.error('Error fetching payments:', err);
-    return [];
+    console.error('Error fetching payments:', err)
+    return []
   }
 }
 
-/**
- * Cancel booking
- */
 export async function cancelBooking(bookingId: string): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('bookings')
-      .update({
-        status: 'cancelled',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', bookingId);
-
-    if (error) throw error;
-    return true;
+    await db
+      .update(schema.bookings)
+      .set({ status: 'cancelled', updatedAt: new Date() })
+      .where(eq(schema.bookings.id, bookingId))
+    return true
   } catch (err) {
-    console.error('Error cancelling booking:', err);
-    return false;
+    console.error('Error cancelling booking:', err)
+    return false
   }
 }
 
-/**
- * Cancel consultation
- */
 export async function cancelConsultation(consultationId: string): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('consultations')
-      .update({
-        status: 'cancelled',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', consultationId);
-
-    if (error) throw error;
-    return true;
+    await db
+      .update(schema.consultations)
+      .set({ status: 'cancelled', updatedAt: new Date() })
+      .where(eq(schema.consultations.id, consultationId))
+    return true
   } catch (err) {
-    console.error('Error cancelling consultation:', err);
-    return false;
+    console.error('Error cancelling consultation:', err)
+    return false
   }
 }
 
-/**
- * Reschedule booking
- */
 export async function rescheduleBooking(
   bookingId: string,
   newDate: string,
   newTime: string
 ): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('bookings')
-      .update({
-        booking_date: newDate,
-        booking_time: newTime,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', bookingId);
-
-    if (error) throw error;
-    return true;
+    await db
+      .update(schema.bookings)
+      .set({ bookingDate: newDate, bookingTime: newTime, updatedAt: new Date() })
+      .where(eq(schema.bookings.id, bookingId))
+    return true
   } catch (err) {
-    console.error('Error rescheduling booking:', err);
-    return false;
+    console.error('Error rescheduling booking:', err)
+    return false
   }
 }
 
-/**
- * Format date for display
- */
+function mapStudent(row: typeof schema.students.$inferSelect): Student {
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    phone: row.phone || undefined,
+    date_of_birth: row.dateOfBirth || undefined,
+    city: row.city || undefined,
+    neighborhood: row.neighborhood || undefined,
+    bio: row.bio || undefined,
+    profile_image_url: row.profileImageUrl || undefined,
+    created_at: row.createdAt?.toISOString() || new Date().toISOString(),
+    updated_at: row.updatedAt?.toISOString() || new Date().toISOString(),
+  }
+}
+
 export function formatDate(dateString: string): string {
-  const date = new Date(dateString);
+  const date = new Date(dateString)
   return date.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  });
+  })
 }
 
-/**
- * Get status badge color
- */
 export function getStatusColor(status: string): string {
   switch (status) {
     case 'pending':
-      return 'bg-yellow-100 text-yellow-800';
+      return 'bg-yellow-100 text-yellow-800'
     case 'confirmed':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-blue-100 text-blue-800'
     case 'completed':
-      return 'bg-green-100 text-green-800';
+      return 'bg-green-100 text-green-800'
     case 'cancelled':
-      return 'bg-red-100 text-red-800';
+      return 'bg-red-100 text-red-800'
     case 'paid':
-      return 'bg-green-100 text-green-800';
+      return 'bg-green-100 text-green-800'
     case 'scheduled':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-blue-100 text-blue-800'
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-gray-100 text-gray-800'
   }
 }
 
-/**
- * Get status label
- */
 export function getStatusLabel(status: string): string {
   switch (status) {
     case 'pending':
-      return '⏳ Pendente';
+      return 'Pendente'
     case 'confirmed':
-      return '✅ Confirmado';
+      return 'Confirmado'
     case 'completed':
-      return '✓ Concluído';
+      return 'Concluído'
     case 'cancelled':
-      return '✕ Cancelado';
+      return 'Cancelado'
     case 'paid':
-      return '✅ Pago';
+      return 'Pago'
     case 'scheduled':
-      return '📅 Agendado';
+      return 'Agendado'
     default:
-      return status;
+      return status
   }
 }

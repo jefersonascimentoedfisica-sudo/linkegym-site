@@ -1,4 +1,6 @@
-import { supabase } from './supabase-client'
+import { db } from './db'
+import * as schema from './schema'
+import { eq, desc } from 'drizzle-orm'
 
 export interface PersonalRequest {
   id: string
@@ -29,33 +31,40 @@ export interface ProfessionalPlan {
   updated_at: string
 }
 
-// Personal Requests Functions
 export async function createPersonalRequest(data: Omit<PersonalRequest, 'id' | 'created_at' | 'updated_at'>) {
   try {
-    const { data: request, error } = await supabase
-      .from('personal_requests')
-      .insert([data])
-      .select()
-
-    if (error) throw error
-    return { success: true, data: request?.[0] }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+    const inserted = await db
+      .insert(schema.personalRequests)
+      .values({
+        professionalId: data.professional_id,
+        studentName: data.student_name,
+        studentEmail: data.student_email,
+        studentPhone: data.student_phone,
+        studentNeighborhood: data.student_neighborhood,
+        objective: data.objective,
+        availability: data.availability,
+        notes: data.notes,
+        status: data.status,
+      })
+      .returning()
+    return { success: true, data: inserted?.[0] }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { success: false, error: message }
   }
 }
 
 export async function getPersonalRequestsByProfessional(professionalId: string) {
   try {
-    const { data, error } = await supabase
-      .from('personal_requests')
-      .select('*')
-      .eq('professional_id', professionalId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
+    const data = await db
+      .select()
+      .from(schema.personalRequests)
+      .where(eq(schema.personalRequests.professionalId, professionalId))
+      .orderBy(desc(schema.personalRequests.createdAt))
     return { success: true, data: data || [] }
-  } catch (error: any) {
-    return { success: false, error: error.message, data: [] }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { success: false, error: message, data: [] }
   }
 }
 
@@ -64,47 +73,41 @@ export async function updatePersonalRequestStatus(
   status: 'pending' | 'accepted' | 'rejected' | 'completed'
 ) {
   try {
-    const { data, error } = await supabase
-      .from('personal_requests')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', requestId)
-      .select()
-
-    if (error) throw error
-    return { success: true, data: data?.[0] }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+    const updated = await db
+      .update(schema.personalRequests)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(schema.personalRequests.id, requestId))
+      .returning()
+    return { success: true, data: updated?.[0] }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { success: false, error: message }
   }
 }
 
 export async function getPersonalRequestById(requestId: string) {
   try {
-    const { data, error } = await supabase
-      .from('personal_requests')
-      .select('*')
-      .eq('id', requestId)
-      .single()
-
-    if (error) throw error
-    return { success: true, data }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+    const rows = await db
+      .select()
+      .from(schema.personalRequests)
+      .where(eq(schema.personalRequests.id, requestId))
+      .limit(1)
+    return { success: true, data: rows?.[0] }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { success: false, error: message }
   }
 }
 
-// Professional Plans Functions
 export async function getProfessionalPlan(professionalId: string) {
   try {
-    const { data, error } = await supabase
-      .from('professional_plans')
-      .select('*')
-      .eq('professional_id', professionalId)
-      .single()
+    const rows = await db
+      .select()
+      .from(schema.professionalPlans)
+      .where(eq(schema.professionalPlans.professionalId, professionalId))
+      .limit(1)
 
-    if (error && error.code !== 'PGRST116') throw error
-    
-    // If no plan exists, return default basic plan
-    if (!data) {
+    if (!rows?.[0]) {
       return {
         success: true,
         data: {
@@ -115,13 +118,14 @@ export async function getProfessionalPlan(professionalId: string) {
           unlimited_leads: false,
           has_statistics: false,
           priority_search: false,
-        }
+        },
       }
     }
 
-    return { success: true, data }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+    return { success: true, data: rows[0] }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { success: false, error: message }
   }
 }
 
@@ -132,57 +136,63 @@ export async function createOrUpdateProfessionalPlan(
   try {
     const planConfig = getPlanConfig(planType)
 
-    const { data, error } = await supabase
-      .from('professional_plans')
-      .upsert([
-        {
-          professional_id: professionalId,
-          plan_type: planType,
-          ...planConfig,
-          updated_at: new Date().toISOString(),
-        }
-      ], { onConflict: 'professional_id' })
+    const existing = await db
       .select()
+      .from(schema.professionalPlans)
+      .where(eq(schema.professionalPlans.professionalId, professionalId))
+      .limit(1)
 
-    if (error) throw error
+    let result
+    if (existing?.[0]) {
+      result = await db
+        .update(schema.professionalPlans)
+        .set({ planType, ...planConfig, updatedAt: new Date() })
+        .where(eq(schema.professionalPlans.professionalId, professionalId))
+        .returning()
+    } else {
+      result = await db
+        .insert(schema.professionalPlans)
+        .values({ professionalId, planType, ...planConfig })
+        .returning()
+    }
 
-    // Also update the professionals table
-    await supabase
-      .from('professionals')
-      .update({ plan_type: planType })
-      .eq('id', professionalId)
+    await db
+      .update(schema.professionals)
+      .set({ planType })
+      .where(eq(schema.professionals.id, professionalId))
 
-    return { success: true, data: data?.[0] }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+    return { success: true, data: result?.[0] }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { success: false, error: message }
   }
 }
 
 export function getPlanConfig(planType: 'basic' | 'ouro' | 'plus') {
   const configs = {
     basic: {
-      max_photos: 3,
-      max_regions: 5,
-      has_verified_badge: false,
-      unlimited_leads: false,
-      has_statistics: false,
-      priority_search: false,
+      maxPhotos: 3,
+      maxRegions: 5,
+      hasVerifiedBadge: false,
+      unlimitedLeads: false,
+      hasStatistics: false,
+      prioritySearch: false,
     },
     ouro: {
-      max_photos: 10,
-      max_regions: 15,
-      has_verified_badge: false,
-      unlimited_leads: false,
-      has_statistics: true,
-      priority_search: true,
+      maxPhotos: 10,
+      maxRegions: 15,
+      hasVerifiedBadge: false,
+      unlimitedLeads: false,
+      hasStatistics: true,
+      prioritySearch: true,
     },
     plus: {
-      max_photos: 50,
-      max_regions: 999,
-      has_verified_badge: true,
-      unlimited_leads: true,
-      has_statistics: true,
-      priority_search: true,
+      maxPhotos: 50,
+      maxRegions: 999,
+      hasVerifiedBadge: true,
+      unlimitedLeads: true,
+      hasStatistics: true,
+      prioritySearch: true,
     },
   }
 
