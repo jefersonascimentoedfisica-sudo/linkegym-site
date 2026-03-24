@@ -12,16 +12,57 @@ import {
 } from 'drizzle-orm/pg-core'
 
 // ============================================
-// USERS TABLE
+// USERS TABLE (better-auth compatible: id is text)
 // ============================================
 export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
   phone: text('phone'),
   userType: text('user_type').default('student'),
+  emailVerified: boolean('email_verified').default(false),
+  image: text('image'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+// ============================================
+// BETTER-AUTH REQUIRED TABLES
+// ============================================
+export const sessions = pgTable('session', {
+  id: text('id').primaryKey(),
+  expiresAt: timestamp('expires_at').notNull(),
+  token: text('token').notNull().unique(),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  userId: text('user_id').notNull(),
+})
+
+export const accounts = pgTable('account', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  userId: text('user_id').notNull(),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at'),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull(),
+})
+
+export const verifications = pgTable('verification', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at'),
+  updatedAt: timestamp('updated_at'),
 })
 
 // ============================================
@@ -39,7 +80,7 @@ export const neighborhoods = pgTable('neighborhoods', {
 // ============================================
 export const professionals = pgTable('professionals', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
   professionalType: text('professional_type').notNull(),
   bio: text('bio'),
   specialties: text('specialties').array(),
@@ -115,9 +156,9 @@ export const availability = pgTable('availability', {
 // ============================================
 export const bookings = pgTable('bookings', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  studentId: uuid('student_id').references(() => users.id, { onDelete: 'cascade' }),
-  clientId: uuid('client_id').references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').references(() => users.id, { onDelete: 'cascade' }),
+  clientId: text('client_id').references(() => users.id, { onDelete: 'cascade' }),
   professionalId: uuid('professional_id').notNull().references(() => professionals.id, { onDelete: 'cascade' }),
   serviceId: integer('service_id').references(() => services.id),
   scheduledDate: date('scheduled_date'),
@@ -145,8 +186,8 @@ export const bookings = pgTable('bookings', {
 export const reviews = pgTable('reviews', {
   id: uuid('id').primaryKey().defaultRandom(),
   bookingId: uuid('booking_id').references(() => bookings.id, { onDelete: 'set null' }),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  clientId: uuid('client_id').references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  clientId: text('client_id').references(() => users.id, { onDelete: 'cascade' }),
   professionalId: uuid('professional_id').notNull().references(() => professionals.id, { onDelete: 'cascade' }),
   rating: integer('rating').notNull(),
   comment: text('comment'),
@@ -159,7 +200,7 @@ export const reviews = pgTable('reviews', {
 export const consultations = pgTable('consultations', {
   id: uuid('id').primaryKey().defaultRandom(),
   nutritionistId: uuid('nutritionist_id').references(() => professionals.id, { onDelete: 'cascade' }),
-  studentId: uuid('student_id').references(() => users.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').references(() => users.id, { onDelete: 'cascade' }),
   clientName: text('client_name'),
   clientEmail: text('client_email'),
   notes: text('notes'),
