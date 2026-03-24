@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createConsultation } from '@/lib/consultations-helper';
-import { formatConsultationPrice } from '@/lib/consultations-helper';
+import { formatConsultationPrice } from '@/lib/client-utils';
 
 interface ConsultationPaymentModalProps {
   isOpen: boolean;
@@ -63,22 +62,28 @@ export default function ConsultationPaymentModal({
       // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Create consultation record
-      const consultation = await createConsultation(
-        nutritionistId,
-        formData.clientName,
-        formData.clientEmail,
-        consultationPrice,
-        formData.notes || undefined
-      );
+      // Create consultation record via API
+      const res = await fetch('/api/consultations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nutritionist_id: nutritionistId,
+          client_name: formData.clientName,
+          client_email: formData.clientEmail,
+          price: consultationPrice,
+          notes: formData.notes || undefined,
+          status: 'paid',
+        }),
+      });
+      const json = await res.json();
 
-      if (!consultation) {
-        throw new Error('Erro ao registrar consulta');
+      if (json.error || !json.data) {
+        throw new Error(json.error || 'Erro ao registrar consulta');
       }
 
-      setConsultationId(consultation.id);
+      setConsultationId(json.data.id);
       setStep('success');
-      onPaymentSuccess(consultation.id, formData.clientName);
+      onPaymentSuccess(json.data.id, formData.clientName);
     } catch (err: any) {
       setError(err.message || 'Erro ao processar pagamento');
       setStep('form');

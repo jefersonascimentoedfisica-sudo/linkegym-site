@@ -8,7 +8,7 @@ import ReviewsSection from '@/components/ReviewsSection'
 import BookingModal from '@/components/BookingModal'
 import ConsultationPaymentModal from '@/components/ConsultationPaymentModal'
 import ConsultationConfirmation from '@/components/ConsultationConfirmation'
-import { formatConsultationPrice, getServiceTypeLabel } from '@/lib/consultations-helper'
+import { formatConsultationPrice, getServiceTypeLabel } from '@/lib/client-utils'
 
 export default function ProfessionalProfile() {
   const params = useParams()

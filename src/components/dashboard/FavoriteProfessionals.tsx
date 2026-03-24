@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { removeFavorite } from '@/lib/students-helper'
 
 interface FavoriteProfessionalsProps {
   favorites: any[]
@@ -21,7 +20,8 @@ export default function FavoriteProfessionals({
 
     try {
       setLoading(true)
-      const success = await removeFavorite(studentId, professionalId)
+      const res = await fetch(`/api/favorites?student_id=${studentId}&professional_id=${professionalId}`, { method: 'DELETE' })
+      const success = res.ok
       if (success) {
         setFavoritesList(favoritesList.filter(f => f.professional_id !== professionalId))
       }

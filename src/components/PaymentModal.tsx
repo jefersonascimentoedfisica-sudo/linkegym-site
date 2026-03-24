@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createStripePaymentIntent } from '@/lib/stripe-service';
-import { formatCurrency } from '@/lib/payments-helper';
+import { formatCurrency } from '@/lib/client-utils';
 
 interface PaymentModalProps {
   isOpen: boolean;

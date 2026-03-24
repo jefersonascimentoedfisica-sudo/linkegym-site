@@ -2,17 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase-client'
-import {
-  getStudentByEmail,
-  getStudentBookings,
-  getStudentConsultations,
-  getStudentPayments,
-  getStudentFavorites,
-  formatDate,
-  getStatusLabel,
-  getStatusColor,
-} from '@/lib/students-helper'
+import { formatDate, getBookingStatusLabel as getStatusLabel, getBookingStatusColor as getStatusColor } from '@/lib/client-utils'
 import UpcomingBookings from '@/components/dashboard/UpcomingBookings'
 import PaymentHistory from '@/components/dashboard/PaymentHistory'
 import FavoriteProfessionals from '@/components/dashboard/FavoriteProfessionals'
@@ -32,31 +22,36 @@ export default function StudentDashboard() {
     const fetchData = async () => {
       try {
         setLoading(true)
-        
+
         // Get current user email from localStorage or session
         const userEmail = localStorage.getItem('studentEmail') || 'demo@example.com'
-        
+
         // Fetch student data
-        const studentData = await getStudentByEmail(userEmail)
+        const studentRes = await fetch(`/api/students?email=${encodeURIComponent(userEmail)}`)
+        const studentJson = await studentRes.json()
+        const studentData = studentJson.data
         if (!studentData) throw new Error('Aluno não encontrado')
-        
         setStudent(studentData)
 
         // Fetch bookings
-        const bookingsData = await getStudentBookings(studentData.id)
-        setBookings(bookingsData)
+        const bookingsRes = await fetch(`/api/bookings?student_id=${studentData.id}`)
+        const bookingsJson = await bookingsRes.json()
+        setBookings(bookingsJson.data || [])
 
         // Fetch consultations
-        const consultationsData = await getStudentConsultations(studentData.id)
-        setConsultations(consultationsData)
+        const consultRes = await fetch(`/api/consultations?student_id=${studentData.id}`)
+        const consultJson = await consultRes.json()
+        setConsultations(consultJson.data || [])
 
         // Fetch payments
-        const paymentsData = await getStudentPayments(studentData.id)
-        setPayments(paymentsData)
+        const paymentsRes = await fetch(`/api/payments?student_id=${studentData.id}`)
+        const paymentsJson = await paymentsRes.json()
+        setPayments(paymentsJson.data || [])
 
         // Fetch favorites
-        const favoritesData = await getStudentFavorites(studentData.id)
-        setFavorites(favoritesData)
+        const favRes = await fetch(`/api/favorites?student_id=${studentData.id}`)
+        const favJson = await favRes.json()
+        setFavorites(favJson.data || [])
       } catch (err: any) {
         console.error('Error fetching data:', err)
         setError(err.message || 'Erro ao carregar dados')

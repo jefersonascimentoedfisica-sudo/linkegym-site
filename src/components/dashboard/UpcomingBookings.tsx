@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { cancelBooking, rescheduleBooking, formatDate } from '@/lib/students-helper'
+import { formatDate } from '@/lib/client-utils'
 import RescheduleModal from './RescheduleModal'
 
 interface UpcomingBookingsProps {
@@ -25,7 +25,12 @@ export default function UpcomingBookings({
 
     try {
       setLoading(true)
-      const success = await cancelBooking(bookingId)
+      const res = await fetch(`/api/bookings?id=${bookingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' }),
+      })
+      const success = res.ok
       if (success) {
         setMessage({ type: 'success', text: 'Agendamento cancelado com sucesso' })
         setTimeout(() => window.location.reload(), 2000)

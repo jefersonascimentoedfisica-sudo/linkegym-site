@@ -4,8 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { db } from '@/lib/db'
-import * as schema from '@/lib/schema'
 
 const GUARULHOS_NEIGHBORHOODS = [
   'Centro', 'Vila Galvão', 'Maia', 'Picanço', 'Bonsucesso',
@@ -93,24 +91,32 @@ export default function ProfessionalRegister() {
         const userData = data as { user?: { id?: string } } | null
         if (userData?.user?.id) {
           try {
-            await db.insert(schema.professionals).values({
-              id: userData.user.id,
-              userId: userData.user.id,
-              name: formData.name,
-              email: formData.email,
-              phone: formData.phone,
-              whatsapp: formData.whatsapp,
-              instagram: formData.instagram,
-              professionalType: formData.type,
-              bio: formData.bio,
-              yearsExperience: parseInt(formData.yearsExperience) || 0,
-              registrationNumber: formData.registrationNumber,
-              registrationState: formData.registrationState,
-              residenceNeighborhood: formData.residenceNeighborhood,
-              specialties: formData.specialties,
-              serviceNeighborhoods: formData.serviceNeighborhoods,
-              verified: false,
+            const res = await fetch('/api/professionals', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user_id: userData.user.id,
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                whatsapp: formData.whatsapp,
+                instagram: formData.instagram,
+                professional_type: formData.type,
+                bio: formData.bio,
+                years_experience: parseInt(formData.yearsExperience) || 0,
+                cref: formData.registrationNumber,
+                registration_state: formData.registrationState,
+                residence_neighborhood: formData.residenceNeighborhood,
+                specialties: formData.specialties,
+                service_neighborhoods: formData.serviceNeighborhoods,
+              }),
             })
+            const result = await res.json()
+            if (result.error) {
+              setError(result.error)
+              setLoading(false)
+              return
+            }
           } catch (dbErr: unknown) {
             const msg = dbErr instanceof Error ? dbErr.message : String(dbErr)
             setError(msg)

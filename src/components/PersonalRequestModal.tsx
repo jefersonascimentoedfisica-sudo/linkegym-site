@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createPersonalRequest } from '@/lib/personal-requests-helper'
 
 const OBJECTIVES = [
   'Emagrecimento',
@@ -104,19 +103,24 @@ export default function PersonalRequestModal({
     }
 
     try {
-      const result = await createPersonalRequest({
-        professional_id: professionalId,
-        student_name: formData.student_name,
-        student_email: formData.student_email,
-        student_phone: formData.student_phone,
-        student_neighborhood: formData.student_neighborhood,
-        objective: formData.objective,
-        availability: formData.availability.join(', '),
-        notes: formData.notes,
-        status: 'pending',
+      const res = await fetch('/api/personal-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          professional_id: professionalId,
+          student_name: formData.student_name,
+          student_email: formData.student_email,
+          student_phone: formData.student_phone,
+          student_neighborhood: formData.student_neighborhood,
+          objective: formData.objective,
+          availability: formData.availability.join(', '),
+          notes: formData.notes,
+          status: 'pending',
+        }),
       })
+      const result = await res.json()
 
-      if (result.success) {
+      if (!result.error) {
         setSuccess(true)
         setTimeout(() => {
           onClose()
@@ -134,6 +138,7 @@ export default function PersonalRequestModal({
       } else {
         setError(result.error || 'Erro ao enviar solicitação')
       }
+
     } catch (err: any) {
       setError(err.message || 'Erro ao enviar solicitação')
     } finally {

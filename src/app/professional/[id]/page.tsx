@@ -9,8 +9,7 @@ import BookingModal from '@/components/BookingModal'
 import ConsultationPaymentModal from '@/components/ConsultationPaymentModal'
 import ConsultationConfirmation from '@/components/ConsultationConfirmation'
 import PersonalRequestModal from '@/components/PersonalRequestModal'
-import { formatConsultationPrice, getServiceTypeLabel } from '@/lib/consultations-helper'
-import { getProfessionalPlan, getPlanLabel, getPlanColor } from '@/lib/professional-plans-helper'
+import { formatConsultationPrice, getServiceTypeLabel, getPlanLabel, getPlanColor } from '@/lib/client-utils'
 
 export default function ProfessionalProfile() {
   const params = useParams()
@@ -41,9 +40,10 @@ export default function ProfessionalProfile() {
         setProfessional(data)
         
         // Fetch professional plan
-        const planResult = await getProfessionalPlan(id)
-        if (planResult.success && planResult.data) {
-          setPlan(planResult.data)
+        const planRes = await fetch(`/api/professional-plans?professional_id=${id}`)
+        const planJson = await planRes.json()
+        if (planJson.data) {
+          setPlan(planJson.data)
         }
       } catch (err: any) {
         console.error('Error fetching professional:', err)

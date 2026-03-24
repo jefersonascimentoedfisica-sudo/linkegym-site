@@ -4,8 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { db } from '@/lib/db'
-import * as schema from '@/lib/schema'
 
 export default function StudentRegister() {
   const router = useRouter()
@@ -54,13 +52,23 @@ export default function StudentRegister() {
       const userData = data as { user?: { id?: string } } | null
       if (userData?.user?.id) {
         try {
-          await db.insert(schema.users).values({
-            id: userData.user.id,
-            email: formData.email,
-            name: formData.name,
-            phone: formData.phone,
-            userType: 'student',
+          const res = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: userData.user.id,
+              email: formData.email,
+              name: formData.name,
+              phone: formData.phone,
+              user_type: 'student',
+            }),
           })
+          const result = await res.json()
+          if (result.error) {
+            setError(result.error)
+            setLoading(false)
+            return
+          }
         } catch (dbErr: unknown) {
           const msg = dbErr instanceof Error ? dbErr.message : String(dbErr)
           setError(msg)

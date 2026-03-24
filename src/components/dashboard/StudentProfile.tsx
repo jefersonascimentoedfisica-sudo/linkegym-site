@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { updateStudentProfile } from '@/lib/students-helper'
 
 interface StudentProfileProps {
   student: any
@@ -35,15 +34,21 @@ export default function StudentProfile({ student, onUpdate }: StudentProfileProp
       setLoading(true)
       setMessage(null)
 
-      const updated = await updateStudentProfile(student.id, formData)
+      const res = await fetch(`/api/students?id=${student.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+      const json = await res.json()
 
-      if (updated) {
+      if (res.ok && !json.error) {
+        const updated = json.data || { ...student, ...formData }
         onUpdate(updated)
         setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' })
         setIsEditing(false)
         setTimeout(() => setMessage(null), 3000)
       } else {
-        setMessage({ type: 'error', text: 'Erro ao atualizar perfil' })
+        setMessage({ type: 'error', text: json.error || 'Erro ao atualizar perfil' })
       }
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Erro ao atualizar perfil' })

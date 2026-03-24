@@ -1,6 +1,6 @@
 'use client'
 
-import { formatCurrency } from '@/lib/payments-helper'
+import { formatCurrency } from '@/lib/client-utils'
 
 interface PaymentHistoryProps {
   payments: any[]

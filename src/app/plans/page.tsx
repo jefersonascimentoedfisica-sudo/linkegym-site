@@ -2,7 +2,57 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { PLAN_FEATURES } from '@/lib/professional-plans-helper'
+const PLAN_FEATURES = {
+  basic: {
+    name: 'Plano Básico',
+    price: 0,
+    description: 'Perfeito para começar',
+    features: [
+      'Perfil simples',
+      'Até 3 fotos',
+      'Até 2 regiões',
+      'Visibilidade padrão',
+      'Sem badge verificado',
+      'Até 10 leads/mês',
+    ],
+    color: 'gray',
+    badge: 'Básico',
+  },
+  ouro: {
+    name: 'Plano Ouro',
+    price: 99.9,
+    description: 'Para crescer seu negócio',
+    features: [
+      'Perfil destacado',
+      'Até 10 fotos',
+      'Até 5 regiões',
+      'Melhor posicionamento',
+      'Redes sociais integradas',
+      'Leads ilimitados',
+      'Estatísticas básicas',
+    ],
+    color: 'yellow',
+    badge: 'Ouro',
+  },
+  plus: {
+    name: 'Plano Plus',
+    price: 199.9,
+    description: 'Máximo destaque e recursos',
+    features: [
+      'Destaque máximo',
+      'Fotos ilimitadas',
+      'Todas as regiões',
+      'Prioridade na busca',
+      'Badge verificado',
+      'Leads ilimitados',
+      'Estatísticas completas',
+      'Suporte prioritário',
+      'Análise de conversão',
+    ],
+    color: 'purple',
+    badge: 'Plus',
+  },
+}
 
 export default function PlansPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)

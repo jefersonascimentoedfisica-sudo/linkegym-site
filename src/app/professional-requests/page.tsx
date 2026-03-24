@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase-client'
-import { getPersonalRequestsByProfessional, updatePersonalRequestStatus, getStatusLabel, getStatusColor } from '@/lib/personal-requests-helper'
+import { getPersonalRequestStatusLabel as getStatusLabel, getPersonalRequestStatusColor as getStatusColor } from '@/lib/client-utils'
 
 interface PersonalRequest {
   id: string
@@ -32,15 +31,12 @@ export default function ProfessionalRequestsPage() {
   useEffect(() => {
     const fetchProfessionals = async () => {
       try {
-        const { data, error: err } = await supabase
-          .from('professionals')
-          .select('id, name, professional_type')
-          .eq('professional_type', 'personal_trainer')
-
-        if (err) throw err
-        setProfessionals(data || [])
-
-        if (data && data.length > 0) {
+        const res = await fetch('/api/professionals?professional_type=personal_trainer')
+        const json = await res.json()
+        if (json.error) throw new Error(json.error)
+        const data = json.data || []
+        setProfessionals(data)
+        if (data.length > 0) {
           setSelectedProfessionalId(data[0].id)
         }
       } catch (err: any) {
@@ -59,12 +55,12 @@ export default function ProfessionalRequestsPage() {
     const fetchRequests = async () => {
       try {
         setLoading(true)
-        const result = await getPersonalRequestsByProfessional(selectedProfessionalId)
-
-        if (result.success) {
-          setRequests(result.data)
+        const res = await fetch(`/api/personal-requests?professional_id=${selectedProfessionalId}`)
+        const json = await res.json()
+        if (json.error) {
+          setError(json.error)
         } else {
-          setError(result.error)
+          setRequests(json.data || [])
         }
       } catch (err: any) {
         setError(err.message)
@@ -79,15 +75,16 @@ export default function ProfessionalRequestsPage() {
   const handleStatusChange = async (requestId: string, newStatus: string) => {
     setUpdatingId(requestId)
     try {
-      const result = await updatePersonalRequestStatus(
-        requestId,
-        newStatus as 'pending' | 'accepted' | 'rejected' | 'completed'
-      )
-
-      if (result.success) {
-        setRequests(requests.map(r => r.id === requestId ? { ...r, status: newStatus as any } : r))
+      const res = await fetch(`/api/personal-requests?id=${requestId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      const json = await res.json()
+      if (json.error) {
+        setError(json.error)
       } else {
-        setError(result.error)
+        setRequests(requests.map(r => r.id === requestId ? { ...r, status: newStatus as any } : r))
       }
     } catch (err: any) {
       setError(err.message)

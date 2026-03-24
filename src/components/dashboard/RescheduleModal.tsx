@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { rescheduleBooking } from '@/lib/students-helper'
 
 const AVAILABLE_TIMES = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
@@ -39,7 +38,12 @@ export default function RescheduleModal({
       setLoading(true)
       setError(null)
 
-      const success = await rescheduleBooking(booking.id, newDate, newTime)
+      const res = await fetch(`/api/bookings?id=${booking.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_date: newDate, booking_time: newTime }),
+      })
+      const success = res.ok
 
       if (success) {
         onSuccess()
