@@ -66,6 +66,13 @@ const getBaseUrl = () => {
   return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 }
 
+const buildApiUrl = (path: string) => {
+  if (typeof window !== 'undefined') {
+    return new URL(path, window.location.origin)
+  }
+  return new URL(path, getBaseUrl())
+}
+
 type QueryResult<T = unknown> = { data: T | null; error: Error | null }
 
 class QueryBuilder<T = Record<string, unknown>> {
@@ -117,7 +124,7 @@ class QueryBuilder<T = Record<string, unknown>> {
 
   async then(resolve: (value: QueryResult<T>) => void, reject?: (reason: unknown) => void) {
     try {
-      const url = new URL(`${getBaseUrl()}/api/${this.table}`)
+      const url = buildApiUrl(`/api/${this.table}`)
       for (const [k, v] of Object.entries(this.filters)) {
         url.searchParams.set(k, String(v))
       }
@@ -197,7 +204,7 @@ class UpdateBuilder {
 
   async then(resolve: (value: QueryResult) => void, reject?: (reason: unknown) => void) {
     try {
-      const url = new URL(`${getBaseUrl()}/api/${this.table}`)
+      const url = buildApiUrl(`/api/${this.table}`)
       for (const [k, v] of Object.entries(this.filters)) {
         url.searchParams.set(k, String(v))
       }
@@ -220,12 +227,16 @@ class UpdateBuilder {
 }
 
 class StorageShim {
-  from(_bucket: string) {
+  from(bucket: string) {
+    void bucket
     return {
-      upload: async (_path: string, _file: unknown) => {
+      upload: async (pathName: string, file: unknown) => {
+        void pathName
+        void file
         return { data: null, error: new Error('Storage não disponível') }
       },
-      getPublicUrl: (_path: string) => {
+      getPublicUrl: (pathName: string) => {
+        void pathName
         return { data: { publicUrl: '' } }
       },
     }

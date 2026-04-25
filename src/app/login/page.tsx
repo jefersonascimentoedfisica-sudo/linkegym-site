@@ -31,8 +31,8 @@ export default function LoginPage() {
       } else {
         router.push('/dashboard');
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer login');
     } finally {
       setLoading(false);
     }
@@ -107,13 +107,6 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          <div className="mt-8 pt-8 border-t border-gray-200">
-            <p className="text-center text-sm text-gray-600 mb-4">Dados de teste:</p>
-            <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
-              <p><strong>Email:</strong> teste@linke gym.com</p>
-              <p><strong>Senha:</strong> 123456</p>
-            </div>
-          </div>
         </div>
       </section>
     </div>

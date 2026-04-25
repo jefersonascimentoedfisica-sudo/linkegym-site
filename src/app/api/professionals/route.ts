@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
     const data = await query
     return NextResponse.json({ data: data || [], error: null })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error)
-    return NextResponse.json({ data: null, error: message }, { status: 500 })
+    console.error('GET /api/professionals failed:', error)
+    return NextResponse.json({ data: null, error: 'Internal server error' }, { status: 500 })
   }
 }
 
