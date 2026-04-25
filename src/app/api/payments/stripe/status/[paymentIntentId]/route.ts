@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireApiUser } from '@/lib/api-auth';
 
 /**
  * GET /api/payments/stripe/status/[paymentIntentId]
@@ -9,6 +10,9 @@ export async function GET(
   { params }: { params: Promise<{ paymentIntentId: string }> }
 ) {
   try {
+    const user = await requireApiUser(request);
+    if (user instanceof NextResponse) return user;
+
     const { paymentIntentId } = await params;
 
     if (!paymentIntentId) {
@@ -18,15 +22,13 @@ export async function GET(
       );
     }
 
-    // In a real implementation, you would use the Stripe SDK
-    // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-    // const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-    // Mock response for development
-    return NextResponse.json({
-      status: 'succeeded',
-      paymentIntentId,
-    });
+    return NextResponse.json(
+      {
+        error: 'Stripe payment status is not configured. Refusing to return a fake succeeded status.',
+        paymentIntentId,
+      },
+      { status: 501 }
+    );
   } catch (error: any) {
     console.error('Error getting payment status:', error);
     return NextResponse.json(

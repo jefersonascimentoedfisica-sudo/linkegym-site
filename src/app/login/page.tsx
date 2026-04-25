@@ -27,7 +27,7 @@ export default function LoginPage() {
     try {
       const { error } = await signIn(formData.email, formData.password);
       if (error) {
-        setError(error.message);
+        setError(error instanceof Error ? error.message : String(error));
       } else {
         router.push('/dashboard');
       }

@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import * as schema from '@/lib/schema'
 import { eq } from 'drizzle-orm'
+import { canAccessUser, requireApiUser } from '@/lib/api-auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireApiUser(request)
+    if (user instanceof NextResponse) return user
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     const email = searchParams.get('email')
+
+    if (!canAccessUser(user, id, email)) {
+      return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 })
+    }
 
     if (id) {
       const rows = await db
@@ -36,7 +44,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireApiUser(request)
+    if (user instanceof NextResponse) return user
+
     const body = await request.json()
+    if (body.id !== user.id || body.email?.toLowerCase() !== user.email?.toLowerCase()) {
+      return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 })
+    }
+
     const inserted = await db
       .insert(schema.users)
       .values({
@@ -56,11 +71,18 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const user = await requireApiUser(request)
+    if (user instanceof NextResponse) return user
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     if (!id) {
       return NextResponse.json({ error: 'Missing id' }, { status: 400 })
     }
+    if (!canAccessUser(user, id)) {
+      return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = await request.json()
     const updates: Record<string, unknown> = {}
     if (body.name !== undefined) updates.name = body.name

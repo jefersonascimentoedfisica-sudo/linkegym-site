@@ -53,12 +53,11 @@ export default function PaymentModal({
         throw new Error('Falha ao criar intenção de pagamento');
       }
 
-      // In a real implementation, you would redirect to Stripe checkout
-      // For now, we'll simulate a successful payment
-      setTimeout(() => {
-        setStep('success');
-        onPaymentSuccess(result.paymentIntentId);
-      }, 2000);
+      if (!result.clientSecret || result.clientSecret.includes('_mock')) {
+        throw new Error('Pagamento indisponivel: integracao real com Stripe nao configurada');
+      }
+
+      throw new Error('Pagamento indisponivel: checkout real com Stripe ainda nao implementado');
     } catch (err: any) {
       setError(err.message || 'Erro ao processar pagamento');
       setStep('confirm');

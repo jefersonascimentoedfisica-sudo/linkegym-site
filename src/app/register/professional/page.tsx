@@ -24,6 +24,8 @@ export default function ProfessionalRegister() {
     name: '',
     email: '',
     phone: '',
+    password: '',
+    confirmPassword: '',
     type: 'personal_trainer',
     bio: '',
     specialties: [] as string[],
@@ -75,7 +77,13 @@ export default function ProfessionalRegister() {
       setError('')
       setLoading(true)
       try {
-        const { data, error: signUpError } = await signUp(formData.email, formData.phone, {
+        if (formData.password !== formData.confirmPassword) {
+          setError('As senhas nao correspondem!')
+          setLoading(false)
+          return
+        }
+
+        const { data, error: signUpError } = await signUp(formData.email, formData.password, {
           name: formData.name,
           user_type: 'professional',
           professional_type: formData.type,
@@ -197,6 +205,20 @@ export default function ProfessionalRegister() {
                     <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                       placeholder="(11) 99999-9999" />
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Senha *</label>
+                    <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={8}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      placeholder="Minimo 8 caracteres" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Confirmar Senha *</label>
+                    <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required minLength={8}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      placeholder="Repita a senha" />
                   </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">

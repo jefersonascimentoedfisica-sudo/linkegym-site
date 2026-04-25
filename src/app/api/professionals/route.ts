@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import * as schema from '@/lib/schema'
 import { eq, desc, asc } from 'drizzle-orm'
+import { isAdmin, requireApiUser } from '@/lib/api-auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,7 +52,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireApiUser(request)
+    if (user instanceof NextResponse) return user
+
     const body = await request.json()
+    if (!isAdmin(user) && body.user_id !== user.id) {
+      return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 })
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const values: any = {
       professionalType: body.professional_type,
@@ -91,11 +99,27 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const user = await requireApiUser(request)
+    if (user instanceof NextResponse) return user
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     if (!id) {
       return NextResponse.json({ error: 'Missing id' }, { status: 400 })
     }
+    const existing = await db
+      .select({ userId: schema.professionals.userId })
+      .from(schema.professionals)
+      .where(eq(schema.professionals.id, id))
+      .limit(1)
+
+    if (!existing[0]) {
+      return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 })
+    }
+    if (!isAdmin(user) && existing[0].userId !== user.id) {
+      return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = await request.json()
     const updates: Record<string, unknown> = {}
     if (body.whatsapp !== undefined) updates.whatsapp = body.whatsapp

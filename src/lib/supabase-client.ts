@@ -235,7 +235,9 @@ class StorageShim {
 class SupabaseShim {
   storage = new StorageShim()
 
-  from(table: string) {
+  // Legacy client components still expect Supabase's broad dynamic typing.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  from(table: string): any {
     const builder = new QueryBuilder(table)
     return {
       select: (fields?: string) => builder.select(fields),

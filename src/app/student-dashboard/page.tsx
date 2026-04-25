@@ -7,8 +7,10 @@ import UpcomingBookings from '@/components/dashboard/UpcomingBookings'
 import PaymentHistory from '@/components/dashboard/PaymentHistory'
 import FavoriteProfessionals from '@/components/dashboard/FavoriteProfessionals'
 import StudentProfile from '@/components/dashboard/StudentProfile'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function StudentDashboard() {
+  const { user, loading: authLoading, signOut } = useAuth()
   const [student, setStudent] = useState<any>(null)
   const [bookings, setBookings] = useState<any[]>([])
   const [consultations, setConsultations] = useState<any[]>([])
@@ -20,11 +22,17 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (authLoading) return
+      if (!user?.email) {
+        setError('Faca login para acessar seu dashboard')
+        setLoading(false)
+        return
+      }
+
       try {
         setLoading(true)
 
-        // Get current user email from localStorage or session
-        const userEmail = localStorage.getItem('studentEmail') || 'demo@example.com'
+        const userEmail = user.email
 
         // Fetch student data
         const studentRes = await fetch(`/api/students?email=${encodeURIComponent(userEmail)}`)
@@ -61,7 +69,7 @@ export default function StudentDashboard() {
     }
 
     fetchData()
-  }, [])
+  }, [authLoading, user?.email])
 
   if (loading) {
     return (
@@ -107,8 +115,8 @@ export default function StudentDashboard() {
           <div className="flex items-center gap-4">
             <span className="text-gray-600">Olá, {student.name}!</span>
             <button
-              onClick={() => {
-                localStorage.removeItem('studentEmail')
+              onClick={async () => {
+                await signOut()
                 window.location.href = '/'
               }}
               className="text-red-600 hover:text-red-700 font-medium"

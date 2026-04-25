@@ -2,14 +2,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import * as schema from '@/lib/schema'
 import { eq, and, asc } from 'drizzle-orm'
+import { isAdmin, requireApiUser } from '@/lib/api-auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireApiUser(request)
+    if (user instanceof NextResponse) return user
+
     const { searchParams } = new URL(request.url)
     const professionalId = searchParams.get('professional_id')
     const studentId = searchParams.get('student_id')
 
     if (professionalId) {
+      if (!isAdmin(user)) {
+        const professional = await db
+          .select({ userId: schema.professionals.userId })
+          .from(schema.professionals)
+          .where(eq(schema.professionals.id, professionalId))
+          .limit(1)
+        if (!professional[0] || professional[0].userId !== user.id) {
+          return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 })
+        }
+      }
+
       const data = await db
         .select()
         .from(schema.bookings)
@@ -19,6 +34,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (studentId) {
+      if (!isAdmin(user) && studentId !== user.id) {
+        return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 })
+      }
+
       const data = await db
         .select()
         .from(schema.bookings)
@@ -35,17 +54,22 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireApiUser(request)
+    if (user instanceof NextResponse) return user
+
     const body = await request.json()
     const inserted = await db
       .insert(schema.bookings)
       .values({
+        userId: user.id,
+        studentId: user.id,
         professionalId: body.professional_id,
         studentName: body.student_name,
-        studentEmail: body.student_email,
+        studentEmail: user.email || body.student_email,
         bookingDate: body.booking_date,
         bookingTime: body.booking_time,
         notes: body.notes,
-        status: body.status || 'pending',
+        status: 'pending',
       })
       .returning()
     const row = inserted?.[0]
@@ -58,11 +82,31 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const user = await requireApiUser(request)
+    if (user instanceof NextResponse) return user
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     if (!id) {
       return NextResponse.json({ error: 'Missing id' }, { status: 400 })
     }
+    const existing = await db
+      .select({
+        studentId: schema.bookings.studentId,
+        userId: schema.bookings.userId,
+        professionalUserId: schema.professionals.userId,
+      })
+      .from(schema.bookings)
+      .leftJoin(schema.professionals, eq(schema.bookings.professionalId, schema.professionals.id))
+      .where(eq(schema.bookings.id, id))
+      .limit(1)
+
+    const row = existing[0]
+    if (!row) return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 })
+    if (!isAdmin(user) && row.studentId !== user.id && row.userId !== user.id && row.professionalUserId !== user.id) {
+      return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = await request.json()
     const updates: Record<string, unknown> = {}
     if (body.status !== undefined) updates.status = body.status

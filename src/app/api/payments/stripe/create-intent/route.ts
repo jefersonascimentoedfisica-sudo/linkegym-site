@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireApiUser } from '@/lib/api-auth';
 
 /**
  * POST /api/payments/stripe/create-intent
@@ -6,6 +7,9 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireApiUser(request);
+    if (user instanceof NextResponse) return user;
+
     const { amount, bookingId, studentEmail, professionalId } = await request.json();
 
     // Validate input
@@ -16,27 +20,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // In a real implementation, you would use the Stripe SDK
-    // For now, we'll return a mock response
-    // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-    // const paymentIntent = await stripe.paymentIntents.create({
-    //   amount,
-    //   currency: 'brl',
-    //   metadata: {
-    //     bookingId,
-    //     studentEmail,
-    //     professionalId,
-    //   },
-    // });
+    if (studentEmail?.toLowerCase() !== user.email?.toLowerCase()) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
 
-    // Mock response for development
-    const mockPaymentIntentId = `pi_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    return NextResponse.json({
-      clientSecret: `${mockPaymentIntentId}_secret_mock`,
-      paymentIntentId: mockPaymentIntentId,
-      publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_mock',
-    });
+    return NextResponse.json(
+      {
+        error: 'Stripe payment processing is not configured. Refusing to create a mock payment intent.',
+        required: ['STRIPE_SECRET_KEY', 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', 'STRIPE_WEBHOOK_SECRET'],
+        bookingId,
+        professionalId,
+        amount,
+      },
+      { status: 501 }
+    );
   } catch (error: any) {
     console.error('Error creating payment intent:', error);
     return NextResponse.json(

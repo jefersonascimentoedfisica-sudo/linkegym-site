@@ -19,8 +19,8 @@
 Na página de configuração, adicione as seguintes variáveis:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://tttypwipemjeacygljlz.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_NRFI9sVumNTJS689qtluWg_VlgTQ4mw
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
 
 ## Passo 4: Deploy
