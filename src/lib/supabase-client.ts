@@ -1,7 +1,12 @@
 import { createAuthClient } from 'better-auth/react'
 
+const getAuthBaseUrl = () => {
+  if (typeof window !== 'undefined') return window.location.origin
+  return process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || 'http://localhost:3000'
+}
+
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || 'https://linkegymbrasil.com.br',
+  baseURL: getAuthBaseUrl(),
 })
 
 export const { signIn: authSignIn, signUp: authSignUp, signOut: authSignOut, useSession } = authClient
@@ -75,6 +80,8 @@ const buildApiUrl = (path: string) => {
 
 type QueryResult<T = unknown> = { data: T | null; error: Error | null }
 
+const makeClientError = () => new Error('Não foi possível concluir a operação.')
+
 class QueryBuilder<T = Record<string, unknown>> {
   private table: string
   private filters: Record<string, unknown> = {}
@@ -136,7 +143,7 @@ class QueryBuilder<T = Record<string, unknown>> {
       const json = await res.json()
 
       if (json.error && !res.ok) {
-        resolve({ data: null, error: new Error(json.error) })
+        resolve({ data: null, error: makeClientError() })
         return
       }
 
@@ -146,9 +153,9 @@ class QueryBuilder<T = Record<string, unknown>> {
       } else {
         resolve({ data: json.data ?? [], error: null })
       }
-    } catch (err: unknown) {
-      if (reject) reject(err)
-      else resolve({ data: null, error: err as Error })
+    } catch {
+      void reject
+      resolve({ data: null, error: makeClientError() })
     }
   }
 }
@@ -168,20 +175,21 @@ class InsertBuilder {
 
   async then(resolve: (value: QueryResult) => void, reject?: (reason: unknown) => void) {
     try {
-      const res = await fetch(`${getBaseUrl()}/api/${this.table}`, {
+      const url = buildApiUrl(`/api/${this.table}`)
+      const res = await fetch(url.toString(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(this.rows[0]),
       })
       const json = await res.json()
       if (json.error && !res.ok) {
-        resolve({ data: null, error: new Error(json.error) })
+        resolve({ data: null, error: makeClientError() })
         return
       }
       resolve({ data: json.data, error: null })
-    } catch (err: unknown) {
-      if (reject) reject(err)
-      else resolve({ data: null, error: err as Error })
+    } catch {
+      void reject
+      resolve({ data: null, error: makeClientError() })
     }
   }
 }
@@ -215,13 +223,13 @@ class UpdateBuilder {
       })
       const json = await res.json()
       if (json.error && !res.ok) {
-        resolve({ data: null, error: new Error(json.error) })
+        resolve({ data: null, error: makeClientError() })
         return
       }
       resolve({ data: json.data, error: null })
-    } catch (err: unknown) {
-      if (reject) reject(err)
-      else resolve({ data: null, error: err as Error })
+    } catch {
+      void reject
+      resolve({ data: null, error: makeClientError() })
     }
   }
 }

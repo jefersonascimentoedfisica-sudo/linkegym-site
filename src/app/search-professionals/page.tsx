@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase-client';
+import type { Professional } from '@/lib/domain-types';
 
 const GUARULHOS_NEIGHBORHOODS = [
   'Centro', 'Vila Galvão', 'Maia', 'Picanço', 'Bonsucesso',
@@ -18,7 +19,7 @@ const SPECIALTIES = [
 ];
 
 export default function SearchProfessionals() {
-  const [professionals, setProfessionals] = useState<any[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
     specialty: '',
@@ -44,22 +45,22 @@ export default function SearchProfessionals() {
       if (error) throw error;
       
       // Filter by specialty and neighborhood on client side
-      let filtered = data || [];
+      let filtered = (Array.isArray(data) ? data : []) as Professional[];
       
       if (filters.specialty) {
-        filtered = filtered.filter((prof: any) => 
+        filtered = filtered.filter((prof: Professional) =>
           prof.specialties && prof.specialties.includes(filters.specialty)
         );
       }
       
       if (filters.neighborhood) {
-        filtered = filtered.filter((prof: any) => 
+        filtered = filtered.filter((prof: Professional) =>
           prof.service_neighborhoods && prof.service_neighborhoods.includes(filters.neighborhood)
         );
       }
       
       setProfessionals(filtered);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error searching professionals:', err);
       setProfessionals([]);
     } finally {

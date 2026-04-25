@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { formatConsultationPrice } from '@/lib/client-utils';
+import { formatConsultationPrice, getErrorMessage } from '@/lib/client-utils';
 
 interface ConsultationPaymentModalProps {
   isOpen: boolean;
@@ -84,8 +84,8 @@ export default function ConsultationPaymentModal({
       setConsultationId(json.data.id);
       setStep('success');
       onPaymentSuccess(json.data.id, formData.clientName);
-    } catch (err: any) {
-      setError(err.message || 'Erro ao processar pagamento');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao processar pagamento'));
       setStep('form');
     } finally {
       setLoading(false);

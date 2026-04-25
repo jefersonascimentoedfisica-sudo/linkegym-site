@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase-client';
+import type { Professional } from '@/lib/domain-types';
+
+type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+type BookingFilterStatus = BookingStatus | 'all';
+
+const BOOKING_STATUSES: BookingStatus[] = ['pending', 'confirmed', 'completed', 'cancelled'];
 
 interface Booking {
   id: string;
@@ -11,7 +17,7 @@ interface Booking {
   student_email: string;
   booking_date: string;
   booking_time: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: BookingStatus;
   notes: string | null;
   created_at: string;
 }
@@ -21,8 +27,8 @@ export default function BookingsManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>('');
-  const [professionals, setProfessionals] = useState<any[]>([]);
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [filterStatus, setFilterStatus] = useState<BookingFilterStatus>('all');
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Fetch professionals on mount
@@ -45,13 +51,14 @@ export default function BookingsManagement() {
         .order('name');
 
       if (err) throw err;
-      setProfessionals(data || []);
+      const professionalRows = (Array.isArray(data) ? data : []) as Professional[];
+      setProfessionals(professionalRows);
 
       // Select first professional by default
-      if (data && data.length > 0) {
-        setSelectedProfessionalId(data[0].id);
+      if (professionalRows.length > 0) {
+        setSelectedProfessionalId(professionalRows[0].id);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching professionals:', err);
       setError('Erro ao carregar profissionais');
     }
@@ -68,8 +75,8 @@ export default function BookingsManagement() {
         .order('booking_time', { ascending: true });
 
       if (err) throw err;
-      setBookings(data || []);
-    } catch (err: any) {
+      setBookings((Array.isArray(data) ? data : []) as Booking[]);
+    } catch (err: unknown) {
       console.error('Error fetching bookings:', err);
       setError('Erro ao carregar agendamentos');
     } finally {
@@ -77,7 +84,7 @@ export default function BookingsManagement() {
     }
   };
 
-  const handleStatusChange = async (bookingId: string, newStatus: string) => {
+  const handleStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
     try {
       setUpdatingStatus(true);
       const { error: err } = await supabase
@@ -91,16 +98,25 @@ export default function BookingsManagement() {
       setBookings(
         bookings.map(booking =>
           booking.id === bookingId
-            ? { ...booking, status: newStatus as any }
+            ? { ...booking, status: newStatus }
             : booking
         )
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating booking status:', err);
       alert('Erro ao atualizar status do agendamento');
     } finally {
       setUpdatingStatus(false);
     }
+  };
+
+  const handleStatusSelect = (bookingId: string, value: string) => {
+    if (!BOOKING_STATUSES.includes(value as BookingStatus)) {
+      alert('Status inválido para o agendamento');
+      return;
+    }
+
+    void handleStatusChange(bookingId, value as BookingStatus);
   };
 
   const getStatusColor = (status: string) => {
@@ -320,7 +336,7 @@ export default function BookingsManagement() {
                           <td className="px-6 py-4 text-sm">
                             <select
                               value={booking.status}
-                              onChange={e => handleStatusChange(booking.id, e.target.value)}
+                              onChange={e => handleStatusSelect(booking.id, e.target.value)}
                               disabled={updatingStatus}
                               className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-gray-100"
                             >

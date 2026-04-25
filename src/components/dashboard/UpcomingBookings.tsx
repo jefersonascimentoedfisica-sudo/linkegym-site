@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { formatDate } from '@/lib/client-utils'
+import type { BookingItem, Professional } from '@/lib/domain-types'
 import RescheduleModal from './RescheduleModal'
 
 interface UpcomingBookingsProps {
-  bookings: any[]
-  consultations: any[]
+  bookings: BookingItem[]
+  consultations: BookingItem[]
   studentId: string
 }
 
@@ -16,7 +17,7 @@ export default function UpcomingBookings({
   studentId,
 }: UpcomingBookingsProps) {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
-  const [selectedBooking, setSelectedBooking] = useState<any>(null)
+  const [selectedBooking, setSelectedBooking] = useState<BookingItem | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -37,26 +38,28 @@ export default function UpcomingBookings({
       } else {
         setMessage({ type: 'error', text: 'Erro ao cancelar agendamento' })
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: 'Erro ao cancelar agendamento' })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleReschedule = (booking: any) => {
+  const handleReschedule = (booking: BookingItem) => {
     setSelectedBooking(booking)
     setShowRescheduleModal(true)
   }
 
-  const handleWhatsApp = (professional: any) => {
-    const whatsappNumber = professional.whatsapp?.replace(/\D/g, '')
-    if (!whatsappNumber) {
+  const handleWhatsApp = (professional: Professional | undefined, item: BookingItem) => {
+    const whatsappNumber = professional?.whatsapp?.replace(/\D/g, '')
+    if (!professional || !whatsappNumber) {
       alert('Número de WhatsApp não disponível')
       return
     }
 
-    const message = `Olá ${professional.name}! Gostaria de confirmar meu agendamento para ${selectedBooking?.booking_date} às ${selectedBooking?.booking_time}.`
+    const date = item.booking_date || item.scheduled_date || 'data a confirmar'
+    const time = item.booking_time || item.scheduled_time || 'horário a confirmar'
+    const message = `Olá ${professional.name}! Gostaria de confirmar meu agendamento para ${date} às ${time}.`
     const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
     window.open(url, '_blank')
   }
@@ -139,7 +142,7 @@ export default function UpcomingBookings({
 
               <div className="flex gap-3 flex-wrap">
                 <button
-                  onClick={() => handleWhatsApp(item.professionals)}
+                  onClick={() => handleWhatsApp(item.professionals, item)}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
                 >
                   <span>💬</span>

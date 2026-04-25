@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase-client';
+import { getErrorMessage } from '@/lib/client-utils';
+import type { Professional } from '@/lib/domain-types';
 
 const GUARULHOS_NEIGHBORHOODS = [
   'Centro', 'Vila Galvão', 'Maia', 'Picanço', 'Bonsucesso',
@@ -17,10 +19,10 @@ const GUARULHOS_NEIGHBORHOODS = [
 export default function ProfessionalDashboard() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const [professional, setProfessional] = useState<any>(null);
+  const [professional, setProfessional] = useState<Professional | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<Partial<Professional>>({});
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -41,10 +43,11 @@ export default function ProfessionalDashboard() {
         .single();
 
       if (err) throw err;
-      setProfessional(data);
-      setFormData(data);
+      const professionalRow = data as Professional;
+      setProfessional(professionalRow);
+      setFormData(professionalRow);
       setLoading(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading professional:', err);
       setLoading(false);
     }
@@ -52,7 +55,7 @@ export default function ProfessionalDashboard() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: any) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSave = async () => {
@@ -69,11 +72,11 @@ export default function ProfessionalDashboard() {
         .eq('id', user?.id);
 
       if (err) throw err;
-      setProfessional(formData);
+      setProfessional(prev => prev ? { ...prev, ...formData } : prev);
       setEditing(false);
       setSuccess('Perfil atualizado com sucesso!');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao salvar perfil'));
     }
   };
 
@@ -230,7 +233,7 @@ export default function ProfessionalDashboard() {
                         onChange={handleChange}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                       />
-                    ) : (
+                    ) : professional.whatsapp ? (
                       <a
                         href={`https://wa.me/${professional.whatsapp.replace(/\D/g, '')}`}
                         target="_blank"
@@ -239,6 +242,8 @@ export default function ProfessionalDashboard() {
                       >
                         {professional.whatsapp}
                       </a>
+                    ) : (
+                      <p className="text-gray-500">Não informado</p>
                     )}
                   </div>
 
@@ -252,7 +257,7 @@ export default function ProfessionalDashboard() {
                         onChange={handleChange}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                       />
-                    ) : (
+                    ) : professional.instagram ? (
                       <a
                         href={`https://instagram.com/${professional.instagram.replace('@', '')}`}
                         target="_blank"
@@ -261,6 +266,8 @@ export default function ProfessionalDashboard() {
                       >
                         {professional.instagram}
                       </a>
+                    ) : (
+                      <p className="text-gray-500">Não informado</p>
                     )}
                   </div>
                 </div>

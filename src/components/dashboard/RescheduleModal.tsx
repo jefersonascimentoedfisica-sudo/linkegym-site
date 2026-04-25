@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { getErrorMessage } from '@/lib/client-utils'
+import type { BookingItem } from '@/lib/domain-types'
 
 const AVAILABLE_TIMES = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
@@ -11,7 +13,7 @@ const AVAILABLE_TIMES = [
 interface RescheduleModalProps {
   isOpen: boolean
   onClose: () => void
-  booking: any
+  booking: BookingItem
   onSuccess: () => void
 }
 
@@ -50,8 +52,8 @@ export default function RescheduleModal({
       } else {
         setError('Erro ao reagendar')
       }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao reagendar')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao reagendar'))
     } finally {
       setLoading(false)
     }

@@ -2,20 +2,21 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { formatDate, getBookingStatusLabel as getStatusLabel, getBookingStatusColor as getStatusColor } from '@/lib/client-utils'
+import { formatDate, getBookingStatusLabel as getStatusLabel, getBookingStatusColor as getStatusColor, getErrorMessage } from '@/lib/client-utils'
 import UpcomingBookings from '@/components/dashboard/UpcomingBookings'
 import PaymentHistory from '@/components/dashboard/PaymentHistory'
 import FavoriteProfessionals from '@/components/dashboard/FavoriteProfessionals'
 import StudentProfile from '@/components/dashboard/StudentProfile'
 import { useAuth } from '@/contexts/AuthContext'
+import type { BookingItem, FavoriteRecord, PaymentRecord, Student } from '@/lib/domain-types'
 
 export default function StudentDashboard() {
   const { user, loading: authLoading, signOut } = useAuth()
-  const [student, setStudent] = useState<any>(null)
-  const [bookings, setBookings] = useState<any[]>([])
-  const [consultations, setConsultations] = useState<any[]>([])
-  const [payments, setPayments] = useState<any[]>([])
-  const [favorites, setFavorites] = useState<any[]>([])
+  const [student, setStudent] = useState<Student | null>(null)
+  const [bookings, setBookings] = useState<BookingItem[]>([])
+  const [consultations, setConsultations] = useState<BookingItem[]>([])
+  const [payments, setPayments] = useState<PaymentRecord[]>([])
+  const [favorites, setFavorites] = useState<FavoriteRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history' | 'payments' | 'favorites' | 'profile'>('upcoming')
@@ -37,32 +38,32 @@ export default function StudentDashboard() {
         // Fetch student data
         const studentRes = await fetch(`/api/students?email=${encodeURIComponent(userEmail)}`)
         const studentJson = await studentRes.json()
-        const studentData = studentJson.data
+        const studentData = studentJson.data as Student | null
         if (!studentData) throw new Error('Aluno não encontrado')
         setStudent(studentData)
 
         // Fetch bookings
         const bookingsRes = await fetch(`/api/bookings?student_id=${studentData.id}`)
         const bookingsJson = await bookingsRes.json()
-        setBookings(bookingsJson.data || [])
+        setBookings((Array.isArray(bookingsJson.data) ? bookingsJson.data : []) as BookingItem[])
 
         // Fetch consultations
         const consultRes = await fetch(`/api/consultations?student_id=${studentData.id}`)
         const consultJson = await consultRes.json()
-        setConsultations(consultJson.data || [])
+        setConsultations((Array.isArray(consultJson.data) ? consultJson.data : []) as BookingItem[])
 
         // Fetch payments
         const paymentsRes = await fetch(`/api/payments?student_id=${studentData.id}`)
         const paymentsJson = await paymentsRes.json()
-        setPayments(paymentsJson.data || [])
+        setPayments((Array.isArray(paymentsJson.data) ? paymentsJson.data : []) as PaymentRecord[])
 
         // Fetch favorites
         const favRes = await fetch(`/api/favorites?student_id=${studentData.id}`)
         const favJson = await favRes.json()
-        setFavorites(favJson.data || [])
-      } catch (err: any) {
+        setFavorites((Array.isArray(favJson.data) ? favJson.data : []) as FavoriteRecord[])
+      } catch (err: unknown) {
         console.error('Error fetching data:', err)
-        setError(err.message || 'Erro ao carregar dados')
+        setError(getErrorMessage(err, 'Erro ao carregar dados'))
       } finally {
         setLoading(false)
       }
@@ -103,7 +104,7 @@ export default function StudentDashboard() {
     )
   }
 
-  const upcomingBookings = bookings.filter(b => new Date(b.booking_date) > new Date() && b.status !== 'cancelled')
+  const upcomingBookings = bookings.filter(b => b.booking_date && new Date(b.booking_date) > new Date() && b.status !== 'cancelled')
   const upcomingConsultations = consultations.filter(c => c.status === 'paid' || c.status === 'scheduled')
 
   return (

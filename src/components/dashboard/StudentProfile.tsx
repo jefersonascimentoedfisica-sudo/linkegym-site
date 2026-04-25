@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { getErrorMessage } from '@/lib/client-utils'
+import type { Student } from '@/lib/domain-types'
 
 interface StudentProfileProps {
-  student: any
-  onUpdate: (student: any) => void
+  student: Student
+  onUpdate: (student: Student) => void
 }
 
 export default function StudentProfile({ student, onUpdate }: StudentProfileProps) {
@@ -42,7 +44,7 @@ export default function StudentProfile({ student, onUpdate }: StudentProfileProp
       const json = await res.json()
 
       if (res.ok && !json.error) {
-        const updated = json.data || { ...student, ...formData }
+        const updated = (json.data || { ...student, ...formData }) as Student
         onUpdate(updated)
         setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' })
         setIsEditing(false)
@@ -50,8 +52,8 @@ export default function StudentProfile({ student, onUpdate }: StudentProfileProp
       } else {
         setMessage({ type: 'error', text: json.error || 'Erro ao atualizar perfil' })
       }
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Erro ao atualizar perfil' })
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: getErrorMessage(err, 'Erro ao atualizar perfil') })
     } finally {
       setLoading(false)
     }

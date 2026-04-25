@@ -1,9 +1,10 @@
 'use client'
 
 import { formatCurrency } from '@/lib/client-utils'
+import type { PaymentRecord } from '@/lib/domain-types'
 
 interface PaymentHistoryProps {
-  payments: any[]
+  payments: PaymentRecord[]
 }
 
 export default function PaymentHistory({ payments }: PaymentHistoryProps) {

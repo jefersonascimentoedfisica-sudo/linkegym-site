@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import type { FavoriteRecord } from '@/lib/domain-types'
 
 interface FavoriteProfessionalsProps {
-  favorites: any[]
+  favorites: FavoriteRecord[]
   studentId: string
 }
 
@@ -12,7 +13,7 @@ export default function FavoriteProfessionals({
   favorites,
   studentId,
 }: FavoriteProfessionalsProps) {
-  const [favoritesList, setFavoritesList] = useState(favorites)
+  const [favoritesList, setFavoritesList] = useState<FavoriteRecord[]>(favorites)
   const [loading, setLoading] = useState(false)
 
   const handleRemoveFavorite = async (professionalId: string) => {

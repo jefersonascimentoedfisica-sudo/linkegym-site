@@ -8,12 +8,13 @@ import ReviewsSection from '@/components/ReviewsSection'
 import BookingModal from '@/components/BookingModal'
 import ConsultationPaymentModal from '@/components/ConsultationPaymentModal'
 import ConsultationConfirmation from '@/components/ConsultationConfirmation'
-import { formatConsultationPrice, getServiceTypeLabel } from '@/lib/client-utils'
+import { formatConsultationPrice, getServiceTypeLabel, getErrorMessage } from '@/lib/client-utils'
+import type { Professional } from '@/lib/domain-types'
 
 export default function ProfessionalProfile() {
   const params = useParams()
   const id = params.id as string
-  const [professional, setProfessional] = useState<any>(null)
+  const [professional, setProfessional] = useState<Professional | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showBookingModal, setShowBookingModal] = useState(false)
@@ -34,10 +35,10 @@ export default function ProfessionalProfile() {
         if (err) throw err
         if (!data) throw new Error('Profissional não encontrado')
 
-        setProfessional(data)
-      } catch (err: any) {
+        setProfessional(data as Professional)
+      } catch (err: unknown) {
         console.error('Error fetching professional:', err)
-        setError(err.message || 'Erro ao carregar profissional')
+        setError(getErrorMessage(err, 'Erro ao carregar profissional'))
       } finally {
         setLoading(false)
       }
@@ -297,7 +298,7 @@ export default function ProfessionalProfile() {
               {/* Info Box */}
               <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm text-gray-700">
-                  <strong>💡 Dica:</strong> Clique em "Agendar Aula" para marcar sua primeira sessão!
+                  <strong>💡 Dica:</strong> Clique em &quot;Agendar Aula&quot; para marcar sua primeira sessão!
                 </p>
               </div>
             </div>

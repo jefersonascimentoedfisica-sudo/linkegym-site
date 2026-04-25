@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase-client';
+import { getErrorMessage } from '@/lib/client-utils';
 
 interface BookingModalProps {
   professionalId: string;
@@ -102,10 +103,10 @@ export default function BookingModal({
         onClose();
         onSuccess?.();
       }, 2000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error booking:', err);
       setMessageType('error');
-      setMessage(`❌ ${err.message || 'Erro ao agendar aula. Tente novamente.'}`);
+      setMessage(`❌ ${getErrorMessage(err, 'Erro ao agendar aula. Tente novamente.')}`);
     } finally {
       setSubmitting(false);
     }

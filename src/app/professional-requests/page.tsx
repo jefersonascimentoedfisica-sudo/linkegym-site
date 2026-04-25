@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { getPersonalRequestStatusLabel as getStatusLabel, getPersonalRequestStatusColor as getStatusColor } from '@/lib/client-utils'
+import { getErrorMessage, getPersonalRequestStatusLabel as getStatusLabel } from '@/lib/client-utils'
+import type { Professional } from '@/lib/domain-types'
+
+type PersonalRequestStatus = 'pending' | 'accepted' | 'rejected' | 'completed'
+type PersonalRequestFilterStatus = PersonalRequestStatus | 'all'
+
+const PERSONAL_REQUEST_STATUSES: PersonalRequestStatus[] = ['pending', 'accepted', 'rejected', 'completed']
+const PERSONAL_REQUEST_FILTER_STATUSES: PersonalRequestFilterStatus[] = ['all', ...PERSONAL_REQUEST_STATUSES]
 
 interface PersonalRequest {
   id: string
@@ -14,17 +21,17 @@ interface PersonalRequest {
   objective: string
   availability: string
   notes: string
-  status: 'pending' | 'accepted' | 'rejected' | 'completed'
+  status: PersonalRequestStatus
   created_at: string
 }
 
 export default function ProfessionalRequestsPage() {
   const [requests, setRequests] = useState<PersonalRequest[]>([])
-  const [professionals, setProfessionals] = useState<any[]>([])
+  const [professionals, setProfessionals] = useState<Professional[]>([])
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<PersonalRequestFilterStatus>('all')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   // Fetch all professionals
@@ -34,14 +41,14 @@ export default function ProfessionalRequestsPage() {
         const res = await fetch('/api/professionals?professional_type=personal_trainer')
         const json = await res.json()
         if (json.error) throw new Error(json.error)
-        const data = json.data || []
+        const data = (Array.isArray(json.data) ? json.data : []) as Professional[]
         setProfessionals(data)
         if (data.length > 0) {
           setSelectedProfessionalId(data[0].id)
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching professionals:', err)
-        setError(err.message)
+        setError(getErrorMessage(err, 'Erro ao carregar profissionais'))
       }
     }
 
@@ -62,8 +69,8 @@ export default function ProfessionalRequestsPage() {
         } else {
           setRequests(json.data || [])
         }
-      } catch (err: any) {
-        setError(err.message)
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Erro ao carregar solicitações'))
       } finally {
         setLoading(false)
       }
@@ -72,7 +79,7 @@ export default function ProfessionalRequestsPage() {
     fetchRequests()
   }, [selectedProfessionalId])
 
-  const handleStatusChange = async (requestId: string, newStatus: string) => {
+  const handleStatusChange = async (requestId: string, newStatus: PersonalRequestStatus) => {
     setUpdatingId(requestId)
     try {
       const res = await fetch(`/api/personal-requests?id=${requestId}`, {
@@ -84,13 +91,22 @@ export default function ProfessionalRequestsPage() {
       if (json.error) {
         setError(json.error)
       } else {
-        setRequests(requests.map(r => r.id === requestId ? { ...r, status: newStatus as any } : r))
+        setRequests(requests.map(r => r.id === requestId ? { ...r, status: newStatus } : r))
       }
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao atualizar solicitação'))
     } finally {
       setUpdatingId(null)
     }
+  }
+
+  const handleStatusSelect = (requestId: string, value: string) => {
+    if (!PERSONAL_REQUEST_STATUSES.includes(value as PersonalRequestStatus)) {
+      setError('Status inválido para a solicitação')
+      return
+    }
+
+    void handleStatusChange(requestId, value as PersonalRequestStatus)
   }
 
   const filteredRequests = filterStatus === 'all'
@@ -189,7 +205,7 @@ export default function ProfessionalRequestsPage() {
               Filtrar por status:
             </label>
             <div className="flex gap-2 flex-wrap">
-              {['all', 'pending', 'accepted', 'rejected', 'completed'].map(status => (
+              {PERSONAL_REQUEST_FILTER_STATUSES.map(status => (
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}
@@ -286,7 +302,7 @@ export default function ProfessionalRequestsPage() {
                       <p className="text-sm font-semibold text-gray-700">Alterar status:</p>
                       <select
                         value={request.status}
-                        onChange={(e) => handleStatusChange(request.id, e.target.value)}
+                        onChange={(e) => handleStatusSelect(request.id, e.target.value)}
                         disabled={updatingId === request.id}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                       >

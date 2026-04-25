@@ -29,10 +29,10 @@ export async function GET(
       },
       { status: 501 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error getting payment status:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to get payment status' },
+      { error: error instanceof Error ? error.message : 'Failed to get payment status' },
       { status: 500 }
     );
   }

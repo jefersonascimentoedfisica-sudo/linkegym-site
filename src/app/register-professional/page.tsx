@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase-client'
+import { getErrorMessage } from '@/lib/client-utils'
 
 const GUARULHOS_NEIGHBORHOODS = [
   'Centro', 'Vila Galvão', 'Maia', 'Picanço', 'Bonsucesso',
@@ -134,8 +135,8 @@ export default function RegisterProfessional() {
 
       setFormData(prev => ({ ...prev, profile_image_url: publicUrl.publicUrl }))
       setError(null)
-    } catch (err: any) {
-      setError(`Erro ao fazer upload da foto: ${err.message}`)
+    } catch (err: unknown) {
+      setError(`Erro ao fazer upload da foto: ${getErrorMessage(err)}`)
     } finally {
       setLoading(false)
     }
@@ -256,8 +257,8 @@ export default function RegisterProfessional() {
       setTimeout(() => {
         router.push(`/professional/${data[0].id}`)
       }, 2000)
-    } catch (err: any) {
-      setError(err.message || 'Erro ao cadastrar profissional')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao cadastrar profissional'))
     } finally {
       setLoading(false)
     }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createStripePaymentIntent } from '@/lib/stripe-service';
-import { formatCurrency } from '@/lib/client-utils';
+import { formatCurrency, getErrorMessage } from '@/lib/client-utils';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -58,8 +58,8 @@ export default function PaymentModal({
       }
 
       throw new Error('Pagamento indisponivel: checkout real com Stripe ainda nao implementado');
-    } catch (err: any) {
-      setError(err.message || 'Erro ao processar pagamento');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao processar pagamento'));
       setStep('confirm');
     } finally {
       setLoading(false);

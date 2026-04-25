@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { getErrorMessage } from '@/lib/client-utils'
 
 const OBJECTIVES = [
   'Emagrecimento',
@@ -139,8 +140,8 @@ export default function PersonalRequestModal({
         setError(result.error || 'Erro ao enviar solicitação')
       }
 
-    } catch (err: any) {
-      setError(err.message || 'Erro ao enviar solicitação')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao enviar solicitação'))
     } finally {
       setLoading(false)
     }

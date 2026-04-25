@@ -9,12 +9,13 @@ import BookingModal from '@/components/BookingModal'
 import ConsultationPaymentModal from '@/components/ConsultationPaymentModal'
 import ConsultationConfirmation from '@/components/ConsultationConfirmation'
 import PersonalRequestModal from '@/components/PersonalRequestModal'
-import { formatConsultationPrice, getServiceTypeLabel, getPlanLabel, getPlanColor } from '@/lib/client-utils'
+import { formatConsultationPrice, getServiceTypeLabel, getPlanLabel, getPlanColor, getErrorMessage } from '@/lib/client-utils'
+import type { Professional, ProfessionalPlan } from '@/lib/domain-types'
 
 export default function ProfessionalProfile() {
   const params = useParams()
   const id = params.id as string
-  const [professional, setProfessional] = useState<any>(null)
+  const [professional, setProfessional] = useState<Professional | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showBookingModal, setShowBookingModal] = useState(false)
@@ -22,7 +23,7 @@ export default function ProfessionalProfile() {
   const [showConsultationConfirmation, setShowConsultationConfirmation] = useState(false)
   const [consultationClientName, setConsultationClientName] = useState('')
   const [showPersonalRequestModal, setShowPersonalRequestModal] = useState(false)
-  const [plan, setPlan] = useState<any>(null)
+  const [plan, setPlan] = useState<ProfessionalPlan | null>(null)
 
   useEffect(() => {
     const fetchProfessional = async () => {
@@ -37,17 +38,17 @@ export default function ProfessionalProfile() {
         if (err) throw err
         if (!data) throw new Error('Profissional não encontrado')
 
-        setProfessional(data)
+        setProfessional(data as Professional)
         
         // Fetch professional plan
         const planRes = await fetch(`/api/professional-plans?professional_id=${id}`)
         const planJson = await planRes.json()
         if (planJson.data) {
-          setPlan(planJson.data)
+          setPlan(planJson.data as ProfessionalPlan)
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching professional:', err)
-        setError(err.message || 'Erro ao carregar profissional')
+        setError(getErrorMessage(err, 'Erro ao carregar profissional'))
       } finally {
         setLoading(false)
       }

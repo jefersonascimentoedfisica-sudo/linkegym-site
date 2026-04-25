@@ -46,11 +46,12 @@ export default function ReviewsSection({ professionalId }: ReviewsSectionProps) 
 
       if (error) throw error;
 
-      setReviews(data || []);
+      const reviewRows = (Array.isArray(data) ? data : []) as Review[];
+      setReviews(reviewRows);
 
       // Calculate average rating
-      if (data && data.length > 0) {
-        const avg = data.reduce((sum, review) => sum + review.rating, 0) / data.length;
+      if (reviewRows.length > 0) {
+        const avg = reviewRows.reduce((sum: number, review: Review) => sum + review.rating, 0) / reviewRows.length;
         setAverageRating(Math.round(avg * 10) / 10);
       } else {
         setAverageRating(0);
@@ -94,7 +95,7 @@ export default function ReviewsSection({ professionalId }: ReviewsSectionProps) 
         fetchReviews();
         setSubmitMessage('');
       }, 2000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting review:', err);
       setSubmitMessage('❌ Erro ao enviar avaliação. Tente novamente.');
     } finally {

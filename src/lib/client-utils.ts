@@ -1,6 +1,8 @@
 // Client-safe utility functions (no server-only imports)
 
-export function formatCurrency(amount: number, currency: string = 'BRL'): string {
+export function formatCurrency(amount?: number | null, currency: string = 'BRL'): string {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) return 'Valor indisponível'
+
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency,
@@ -14,7 +16,7 @@ export function formatConsultationPrice(price: number): string {
   }).format(price)
 }
 
-export function getServiceTypeLabel(serviceType: string): string {
+export function getServiceTypeLabel(serviceType?: string | null): string {
   switch (serviceType) {
     case 'presencial':
       return 'Presencial'
@@ -23,50 +25,54 @@ export function getServiceTypeLabel(serviceType: string): string {
     case 'ambos':
       return 'Presencial + Online'
     default:
-      return serviceType
+      return serviceType || 'Não informado'
   }
 }
 
-export function getPlanLabel(planType: string): string {
+export function getPlanLabel(planType?: string | null): string {
   const labels: Record<string, string> = {
     basic: 'Básico',
     ouro: 'Ouro',
     plus: 'Plus',
   }
-  return labels[planType] || 'Básico'
+  return (planType && labels[planType]) || 'Básico'
 }
 
-export function getPlanColor(planType: string): string {
+export function getPlanColor(planType?: string | null): string {
   const colors: Record<string, string> = {
     basic: 'bg-gray-100 text-gray-800',
     ouro: 'bg-yellow-100 text-yellow-800',
     plus: 'bg-purple-100 text-purple-800',
   }
-  return colors[planType] || 'bg-gray-100 text-gray-800'
+  return (planType && colors[planType]) || 'bg-gray-100 text-gray-800'
 }
 
-export function getPersonalRequestStatusLabel(status: string): string {
+export function getPersonalRequestStatusLabel(status?: string | null): string {
   const labels: Record<string, string> = {
     pending: 'Pendente',
     accepted: 'Aceita',
     rejected: 'Rejeitada',
     completed: 'Concluída',
   }
-  return labels[status] || status
+  return (status && labels[status]) || status || 'Não informado'
 }
 
-export function getPersonalRequestStatusColor(status: string): string {
+export function getPersonalRequestStatusColor(status?: string | null): string {
   const colors: Record<string, string> = {
     pending: 'yellow',
     accepted: 'green',
     rejected: 'red',
     completed: 'blue',
   }
-  return colors[status] || 'gray'
+  return (status && colors[status]) || 'gray'
 }
 
-export function formatDate(dateString: string): string {
+export function formatDate(dateString?: string | null): string {
+  if (!dateString) return 'Data indisponível'
+
   const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return 'Data indisponível'
+
   return date.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
@@ -74,7 +80,7 @@ export function formatDate(dateString: string): string {
   })
 }
 
-export function getBookingStatusColor(status: string): string {
+export function getBookingStatusColor(status?: string | null): string {
   switch (status) {
     case 'pending':
       return 'bg-yellow-100 text-yellow-800'
@@ -93,7 +99,7 @@ export function getBookingStatusColor(status: string): string {
   }
 }
 
-export function getBookingStatusLabel(status: string): string {
+export function getBookingStatusLabel(status?: string | null): string {
   switch (status) {
     case 'pending':
       return 'Pendente'
@@ -108,6 +114,10 @@ export function getBookingStatusLabel(status: string): string {
     case 'scheduled':
       return 'Agendado'
     default:
-      return status
+      return status || 'Não informado'
   }
+}
+
+export function getErrorMessage(err: unknown, fallback = 'Erro inesperado'): string {
+  return err instanceof Error ? err.message : fallback
 }
