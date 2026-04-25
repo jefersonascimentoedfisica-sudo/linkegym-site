@@ -39,3 +39,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Hardening: generated archives, local data, credentials, and data-mutating scripts
+*.zip
+*.dump
+*.sql.gz
+*.db
+*.db.json
+*.sqlite
+*.sqlite3
+.mcp.json
+*service-account*.json
+*service_role*.json
+*service-role*.json
+supabase/.branches/
+supabase/.temp/
+scripts/add-test-data.mjs
+scripts/create-*-table.mjs
+scripts/seed-*.mjs
